@@ -2,14 +2,7 @@
 import numpy as np
 from scipy.stats import spearmanr
 from itertools import combinations
-
-FEATURE_GROUPS = {
-    "d1": slice(0, 4),   # BM25 score, dense sim, rank, score gap
-    "d2": slice(4, 7),   # token length, readability, credibility
-    "d3": slice(7, 9),   # entity overlap, HyDE answerability
-    "d4": slice(9, 11),  # entailment prob, contradiction score
-    "d5": slice(11, 14), # base ppl, ctx ppl, delta_h
-}
+from src.features.concatenate import FEATURE_GROUPS, FEATURE_DIM
 
 
 def run_ablation(X: np.ndarray, y_true: np.ndarray, predictor) -> dict:
