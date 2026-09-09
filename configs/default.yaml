@@ -1,0 +1,77 @@
+# ── Dataset config (sesuai Notion doc Section 6.3) ──────────────────────────
+data:
+  # Dataset benchmark yang digunakan
+  # Pilihan: ragbench | natural_questions | msmarco | triviaqa
+  benchmarks:
+    - ragbench
+    - natural_questions
+    - msmarco
+    - triviaqa
+  split: validation       # split yang dievaluasi
+  max_samples: null       # null = semua; int untuk debugging cepat
+
+  # Source LLM untuk labeling u_i_true (lebih murah dari target LLM)
+  source_model: "meta-llama/Llama-3.2-1B-Instruct"
+  source_device: auto
+  max_new_tokens: 64
+
+  # Paths
+  raw_dir: data/raw
+  processed_dir: data/processed
+
+# ── Retrieval ────────────────────────────────────────────────────────────────
+retrieval:
+  method: bm25            # bm25 | dense | hybrid
+  top_k: 20
+
+# ── Logit Probing (D5) ───────────────────────────────────────────────────────
+probing:
+  batch_size: 8
+  max_length: 512
+  device: cuda            # cuda | cpu | mps
+
+# ── Feature flags ────────────────────────────────────────────────────────────
+features:
+  d1_retriever_centric: true
+  d2_document_quality: true
+  d3_semantic_utility: true
+  d4_faithfulness: true
+  d5_llm_aware: true
+
+# ── MPUP Predictor ───────────────────────────────────────────────────────────
+predictor:
+  algorithm: xgboost      # xgboost | mlp
+  xgboost:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+  mlp:
+    hidden_dims: [256, 128, 64]
+    dropout: 0.2
+    lr: 1.0e-3
+    epochs: 50
+
+# ── Calibration (Notion doc Section 4) ───────────────────────────────────────
+calibration:
+  mode: zero_shot         # zero_shot | few_shot
+  k_shots: [5, 10, 20]   # k values untuk ablation few-shot (Notion 6.3)
+
+# ── Evaluation (Notion doc Section 6) ────────────────────────────────────────
+evaluation:
+  ndcg_k: 10
+  # Baseline pembanding (Notion Table Section 5)
+  baselines:
+    - no_retrieval          # lower bound
+    - full_unranked         # naive baseline
+    - tian_et_al_2026       # zero-shot logit probing only (ρ < 0.3)
+    - lure_rag              # upper bound (fine-tuned per LLM)
+    - rrpo                  # upper bound (fine-tuned per LLM)
+  # Ablation: hapus satu feature group dan ukur drop ρ
+  ablation_features: [d1, d2, d3, d4, d5]
+
+# ── RAG Deployment (Notion doc Phase 6) ──────────────────────────────────────
+deployment:
+  top_m: 5                # jumlah passage terpilih untuk RAG prompt
+  utility_threshold: 0.0  # buang passage dengan û_i ≤ threshold
