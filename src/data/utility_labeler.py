@@ -9,50 +9,18 @@ Sesuai Notion doc Section 4 — Training Predictor Engine:
 Metrik: EM (Exact Match) atau token-F1 (atau keduanya, rata-rata).
 """
 from __future__ import annotations
-import re
-import string
 import numpy as np
 import torch
 from dataclasses import dataclass
 from typing import Callable
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline as hf_pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
-
-# ---------------------------------------------------------------------------
-# QA metrics (token-level)
-# ---------------------------------------------------------------------------
-
-def _normalize(text: str) -> str:
-    text = text.lower().strip()
-    text = re.sub(r"\b(a|an|the)\b", " ", text)
-    text = "".join(ch for ch in text if ch not in string.punctuation)
-    return " ".join(text.split())
-
-
-def exact_match_score(prediction: str, gold_answers: list[str]) -> float:
-    pred = _normalize(prediction)
-    return float(any(_normalize(a) == pred for a in gold_answers))
-
-
-def token_f1_score(prediction: str, gold_answers: list[str]) -> float:
-    pred_tokens = set(_normalize(prediction).split())
-    best = 0.0
-    for gold in gold_answers:
-        gold_tokens = set(_normalize(gold).split())
-        if not pred_tokens or not gold_tokens:
-            continue
-        common = pred_tokens & gold_tokens
-        p = len(common) / len(pred_tokens)
-        r = len(common) / len(gold_tokens)
-        f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
-        best = max(best, f1)
-    return best
-
-
-def combined_score(prediction: str, gold_answers: list[str]) -> float:
-    """Average of EM and F1 — balances precision with partial credit."""
-    return 0.5 * exact_match_score(prediction, gold_answers) + \
-           0.5 * token_f1_score(prediction, gold_answers)
+# Import metrics from evaluation module
+from src.evaluation.metrics import (
+    exact_match_score,
+    token_f1_score,
+    combined_score,
+)
 
 
 # ---------------------------------------------------------------------------
