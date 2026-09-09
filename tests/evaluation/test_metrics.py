@@ -3,6 +3,7 @@ import pytest
 from src.evaluation.metrics import (
     exact_match_score, token_f1_score, combined_score,
     spearman_rho, ndcg_at_k, mrr,
+    exact_match, token_f1, evaluate_all,
 )
 
 
@@ -59,3 +60,36 @@ def test_mrr_basic():
     assert mrr([1]) == pytest.approx(1.0)
     assert mrr([2]) == pytest.approx(0.5)
     assert mrr([1, 2]) == pytest.approx(0.75)
+
+def test_mrr_empty():
+    assert mrr([]) == 0.0
+
+def test_token_f1_score_empty_pred():
+    assert token_f1_score("", ["something"]) == 0.0
+
+def test_ndcg_at_k_empty():
+    assert ndcg_at_k(np.array([]), np.array([]), k=5) == 0.0
+
+def test_exact_match_list():
+    assert exact_match(["Paris", "London"], ["paris", "london"]) == 1.0
+    assert exact_match(["Paris"], ["London"]) == 0.0
+
+def test_token_f1_standalone():
+    assert token_f1("Paris France", "Paris France") == 1.0
+    assert token_f1("", "Paris") == 0.0
+    assert token_f1("Paris", "") == 0.0
+
+def test_evaluate_all_basic():
+    y = np.array([1.0, 2.0, 3.0])
+    result = evaluate_all(y, y, k=3)
+    assert "spearman_rho" in result
+    assert "ndcg_at_k" in result
+    assert result["spearman_rho"] == pytest.approx(1.0)
+
+def test_evaluate_all_with_qa():
+    y = np.array([1.0, 2.0])
+    result = evaluate_all(y, y, qa_predictions=["Paris", "London"],
+                          qa_references=["Paris", "Berlin"], k=2)
+    assert "em" in result
+    assert "f1" in result
+    assert result["em"] == pytest.approx(0.5)
