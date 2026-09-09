@@ -5,6 +5,7 @@ Performs 1-pass forward pass on M_target to compute:
   - Context entropy H_ctx  (passage + query)
   - Entropy delta  ΔH = H_base - H_ctx
 """
+import numpy as np
 import torch
 import torch.nn.functional as F
 from dataclasses import dataclass
@@ -70,4 +71,27 @@ class LogitProber:
     def probe_batch(
         self, query: str, passages: list[str], max_length: int = 512
     ) -> list[LogitProbeResult]:
+        return [self.probe(query, p, max_length) for p in passages]
+
+
+class MockProber:
+    """Deterministic mock for testing without GPU."""
+
+    def __init__(self, seed: int = 42):
+        self._seed = seed
+
+    def probe(self, query: str, passage: str, max_length: int = 512) -> LogitProbeResult:
+        rng = np.random.default_rng(hash(query + passage) % (2**31))
+        h_base = float(rng.uniform(2.5, 4.0))
+        h_ctx = float(rng.uniform(0.5, 5.0))
+        delta_h = h_base - h_ctx
+        return LogitProbeResult(
+            h_base=h_base,
+            h_ctx=h_ctx,
+            delta_h=delta_h,
+            base_perplexity=float(np.exp(h_base)),
+            ctx_perplexity=float(np.exp(h_ctx)),
+        )
+
+    def probe_batch(self, query: str, passages: list[str], max_length: int = 512) -> list[LogitProbeResult]:
         return [self.probe(query, p, max_length) for p in passages]

@@ -21,16 +21,7 @@ from sklearn.metrics import ndcg_score
 from src.evaluation.metrics import evaluate_all, spearman_rho, ndcg_at_k
 from src.predictor.mpup_predictor import MPUPPredictor
 from src.predictor.calibration import LinearCalibrator
-
-
-# ── Feature group slices (harus sinkron dengan experiments/ablation.py) ──────
-FEATURE_GROUPS = {
-    "d1": slice(0, 4),
-    "d2": slice(4, 7),
-    "d3": slice(7, 9),
-    "d4": slice(9, 11),
-    "d5": slice(11, 14),
-}
+from src.features.concatenate import FEATURE_GROUPS
 
 
 def _only_d5(X: np.ndarray) -> np.ndarray:
@@ -46,7 +37,9 @@ def run_evaluation(
     predictor: MPUPPredictor,
     k_shots_list: list[int],
     ndcg_k: int = 10,
+    seed: int = 42,
 ) -> dict:
+    rng = np.random.default_rng(seed)
     results = {}
 
     # ── No Retrieval baseline ─────────────────────────────────────────────────
@@ -86,7 +79,7 @@ def run_evaluation(
     for k in k_shots_list:
         if k >= len(X):
             continue
-        calib_idx = np.random.choice(len(X), k, replace=False)
+        calib_idx = rng.choice(len(X), k, replace=False)
         calibrator = LinearCalibrator()
         calibrator.fit(y_mpup_zs[calib_idx], y_true[calib_idx])
         y_mpup_fs = calibrator.transform(y_mpup_zs)
