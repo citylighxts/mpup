@@ -17,7 +17,11 @@ class D3Features:
 
 def _extract_entities(text: str) -> set[str]:
     if _nlp is None:
-        return set(text.lower().split())
+        # Fallback: simple word tokenization with basic punctuation handling
+        import string
+        # Remove punctuation and split
+        words = text.translate(str.maketrans('', '', string.punctuation)).lower().split()
+        return set(words)
     doc = _nlp(text)
     return {ent.text.lower() for ent in doc.ents}
 
