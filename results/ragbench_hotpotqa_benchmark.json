@@ -1,23 +1,86 @@
 {
-  "dataset": "RAGBench HotpotQA (test split)",
+  "dataset": "RAGBench hotpotqa (test split)",
   "n_questions": 100,
   "n_pairs": 400,
-  "features": "D1+D2+D3+D5 (14-dim)",
-  "d5_model": "mlx-community/Llama-3.2-3B-Instruct-4bit (MLX Apple Silicon)",
-  "date": "2026-09-10",
+  "features": "D1+D2+D3+D4+D5 (14-dim)",
+  "d5_model": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+  "hyde_model": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+  "nli_model": "cross-encoder/nli-deberta-v3-small",
   "results": {
-    "no_retrieval":     {"spearman_rho": 0.0000, "ndcg_at_10": 0.2327},
-    "full_unranked":    {"spearman_rho": 0.0000, "ndcg_at_10": 0.2327},
-    "tian_et_al_2026":  {"spearman_rho": 0.2684, "ndcg_at_10": 0.2408},
-    "mpup_zero_shot":   {"spearman_rho": 0.5091, "ndcg_at_10": 0.7169},
-    "mpup_few_shot_k5": {"spearman_rho": 0.5091, "ndcg_at_10": 0.7169},
-    "mpup_few_shot_k10":{"spearman_rho": 0.5091, "ndcg_at_10": 0.7169}
+    "no_retrieval": {
+      "spearman_rho": 0.0,
+      "ndcg_at_10": 0.2327
+    },
+    "full_unranked": {
+      "spearman_rho": 0.0,
+      "ndcg_at_10": 0.2327
+    },
+    "tian_et_al_2026": {
+      "spearman_rho": 0.452,
+      "ndcg_at_10": 0.5345
+    },
+    "mpup_zero_shot": {
+      "spearman_rho": 0.6321,
+      "ndcg_at_10": 0.7649
+    },
+    "mpup_few_shot_k5": {
+      "spearman_rho": 0.6321,
+      "ndcg_at_10": 0.7649
+    },
+    "mpup_few_shot_k10": {
+      "spearman_rho": 0.6321,
+      "ndcg_at_10": 0.7649
+    }
   },
-  "ablation_rho_delta": {
-    "drop_d1": -0.0495,
-    "drop_d2": +0.2485,
-    "drop_d3": -0.0160,
-    "drop_d5": +0.0739
-  },
-  "notes": "D2 (length/readability) and D5 marginally hurt on HotpotQA multi-hop; D1 (BM25) and D3 (entity overlap) drive improvement."
+  "ablation": {
+    "baseline": {
+      "spearman_rho": 0.6321,
+      "ndcg_at_k": 0.7649
+    },
+    "leave_out_d1": {
+      "spearman_rho": 0.6291,
+      "ndcg_at_k": 0.7968,
+      "delta_rho": -0.003
+    },
+    "only_d1": {
+      "spearman_rho": 0.1129,
+      "ndcg_at_k": 0.2921
+    },
+    "leave_out_d2": {
+      "spearman_rho": 0.3199,
+      "ndcg_at_k": 0.4892,
+      "delta_rho": -0.3122
+    },
+    "only_d2": {
+      "spearman_rho": 0.5031,
+      "ndcg_at_k": 0.7419
+    },
+    "leave_out_d3": {
+      "spearman_rho": 0.6156,
+      "ndcg_at_k": 0.8318,
+      "delta_rho": -0.0165
+    },
+    "only_d3": {
+      "spearman_rho": 0.2139,
+      "ndcg_at_k": 0.3067
+    },
+    "leave_out_d4": {
+      "spearman_rho": 0.5755,
+      "ndcg_at_k": 0.7997,
+      "delta_rho": -0.0566
+    },
+    "only_d4": {
+      "spearman_rho": 0.1011,
+      "ndcg_at_k": 0.499
+    },
+    "leave_out_d5": {
+      "spearman_rho": 0.5507,
+      "ndcg_at_k": 0.8315,
+      "delta_rho": -0.0814
+    },
+    "only_d5": {
+      "spearman_rho": 0.2975,
+      "ndcg_at_k": 0.3722
+    }
+  }
 }
