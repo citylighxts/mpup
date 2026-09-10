@@ -23,20 +23,27 @@ def test_d3_entity_overlap_range():
     assert 0.0 <= feat.entity_overlap <= 1.0
 
 
-def test_d3_hyde_answerability_passthrough():
-    feat = extract_d3("query", "passage", hyde_answerability=0.85)
-    assert feat.hyde_answerability == 0.85
+def test_d3_hyde_answerability_high_when_claim_tokens_in_passage():
+    feat = extract_d3(
+        "What is the capital of France?",
+        "Paris is the capital and largest city of France.",
+        hyde_answer="The capital of France is Paris.",
+    )
+    assert feat.hyde_answerability > 0.5
 
 
-def test_d3_hyde_default():
-    feat = extract_d3("query", "passage")
+def test_d3_hyde_answerability_low_when_claim_absent():
+    feat = extract_d3(
+        "What is the capital of France?",
+        "Photosynthesis converts sunlight into chemical energy.",
+        hyde_answer="The capital of France is Paris.",
+    )
+    assert feat.hyde_answerability < 0.3
+
+
+def test_d3_hyde_default_zero_without_claim():
+    feat = extract_d3("query text", "passage text")
     assert feat.hyde_answerability == 0.0
-
-
-def test_d3_array_values():
-    feat = extract_d3("Paris", "Paris France", hyde_answerability=0.6)
-    arr = d3_to_array(feat)
-    assert arr[1] == 0.6
 
 
 def test_d3_array_dtype():

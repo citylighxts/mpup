@@ -17,12 +17,10 @@ def trained_pipeline(tiny_feature_matrix):
 
 
 def _mock_nli():
-    mock_pipe = MagicMock()
-    mock_pipe.return_value = {
-        "labels": ["ENTAILMENT", "NEUTRAL", "CONTRADICTION"],
-        "scores": [0.7, 0.2, 0.1],
-    }
-    return mock_pipe
+    fake = MagicMock()
+    fake.config.id2label = {0: "contradiction", 1: "entailment", 2: "neutral"}
+    fake.predict.return_value = np.array([[-2.0, 3.5, -0.5]])
+    return fake
 
 
 def test_rank_returns_sorted_descending(trained_pipeline, sample_passages):

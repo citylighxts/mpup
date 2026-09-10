@@ -22,6 +22,7 @@ class MPUPPredictor:
                 max_depth=kwargs.get("max_depth", 6),
                 learning_rate=kwargs.get("learning_rate", 0.05),
                 subsample=kwargs.get("subsample", 0.8),
+                random_state=kwargs.get("random_state", 42),
             )
         elif algorithm == "mlp":
             self.model = MLPRegressor(
@@ -30,6 +31,7 @@ class MPUPPredictor:
                 learning_rate_init=kwargs.get("lr", 1e-3),
                 max_iter=kwargs.get("epochs", 50),
                 early_stopping=True,
+                random_state=kwargs.get("random_state", 42),
             )
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")

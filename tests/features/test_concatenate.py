@@ -21,12 +21,10 @@ def make_probe_result(**kwargs):
 
 
 def _mock_nli():
-    mock_pipe = MagicMock()
-    mock_pipe.return_value = {
-        "labels": ["ENTAILMENT", "NEUTRAL", "CONTRADICTION"],
-        "scores": [0.8, 0.1, 0.1],
-    }
-    return mock_pipe
+    fake = MagicMock()
+    fake.config.id2label = {0: "contradiction", 1: "entailment", 2: "neutral"}
+    fake.predict.return_value = np.array([[-3.0, 4.0, -0.5]])
+    return fake
 
 
 def test_output_shape():

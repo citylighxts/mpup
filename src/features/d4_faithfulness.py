@@ -1,21 +1,23 @@
-"""D4: Faithfulness — entailment probability and contradiction score via NLI."""
+"""D4: Faithfulness — entailment probability and contradiction score via NLI.
+
+An NLI cross-encoder scores the ordered pair (premise = passage, hypothesis =
+claim), where the claim is the HyDE pseudo-answer for the query. A passage that
+entails the expected answer is faithful/useful; one that contradicts it is
+actively harmful.
+"""
 import numpy as np
 from dataclasses import dataclass
-import torch
-from transformers import pipeline as hf_pipeline
 
-_nli_pipe = None
+_nli_model = None
+_MODEL_NAME = "cross-encoder/nli-deberta-v3-small"
 
 
 def _get_nli():
-    global _nli_pipe
-    if _nli_pipe is None:
-        _nli_pipe = hf_pipeline(
-            "zero-shot-classification",
-            model="cross-encoder/nli-deberta-v3-small",
-            device=0 if torch.cuda.is_available() else -1,
-        )
-    return _nli_pipe
+    global _nli_model
+    if _nli_model is None:
+        from sentence_transformers import CrossEncoder
+        _nli_model = CrossEncoder(_MODEL_NAME)
+    return _nli_model
 
 
 @dataclass
@@ -24,14 +26,25 @@ class D4Features:
     contradiction_score: float
 
 
-def extract_d4(hypothesis: str, premise: str) -> D4Features:
-    """hypothesis: query/answer, premise: passage text."""
-    nli = _get_nli()
-    result = nli(premise, candidate_labels=["ENTAILMENT", "NEUTRAL", "CONTRADICTION"])
-    scores = dict(zip(result["labels"], result["scores"]))
+def _softmax(x: np.ndarray) -> np.ndarray:
+    e = np.exp(x - np.max(x))
+    return e / e.sum()
+
+
+def extract_d4(claim: str, passage: str) -> D4Features:
+    """Score how well `passage` (premise) supports `claim` (hypothesis).
+
+    `claim` is the HyDE pseudo-answer for the query — a declarative sentence,
+    never the raw question.
+    """
+    model = _get_nli()
+    logits = np.asarray(model.predict([(passage, claim)])[0], dtype=float)
+    probs = _softmax(logits)
+    id2label = {int(k): v.lower() for k, v in model.config.id2label.items()}
+    by_label = {id2label[i]: float(probs[i]) for i in range(len(probs))}
     return D4Features(
-        entailment_prob=scores.get("ENTAILMENT", 0.0),
-        contradiction_score=scores.get("CONTRADICTION", 0.0),
+        entailment_prob=by_label.get("entailment", 0.0),
+        contradiction_score=by_label.get("contradiction", 0.0),
     )
 
 
