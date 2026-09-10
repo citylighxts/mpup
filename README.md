@@ -77,6 +77,30 @@ configs/
 
 ---
 
+## Results — RAGBench HotpotQA (100 questions, 400 pairs)
+
+D5 probed with **Llama-3.2-3B-Instruct-4bit via MLX** (Apple Silicon, no GPU).
+
+| Method | Spearman ρ | NDCG@10 |
+|--------|-----------|---------|
+| No Retrieval | 0.000 | 0.233 |
+| Full Unranked | 0.000 | 0.233 |
+| Tian et al. 2026 (D5-only) | 0.268 | 0.241 |
+| **MPUP Zero-Shot** | **0.509** | **0.717** |
+
+MPUP achieves **2× higher Spearman ρ** and **3× higher NDCG@10** vs. the D5-only baseline.
+
+### Ablation (ρ change when group dropped)
+
+| Dropped | Δρ | Verdict |
+|---------|----|---------|
+| D1 (BM25/rank) | −0.050 | helpful |
+| D3 (entity/HyDE) | −0.016 | helpful |
+| D5 (ΔH logit probe) | +0.074 | marginal on multi-hop |
+| D2 (length/readability) | +0.249 | noisy on HotpotQA |
+
+---
+
 ## Baselines
 
 | Method | Description |
@@ -105,10 +129,11 @@ make ablation              # per-group ρ drop
 ```python
 from src.pipeline.mpup_pipeline import MPUPPipeline
 from src.predictor.mpup_predictor import MPUPPredictor
-from src.probing.logit_probe import MockProber
+from src.probing.logit_probe import MLXProber  # Apple Silicon — no GPU needed
 
 predictor = MPUPPredictor.load("checkpoints/mpup", algorithm="xgboost")
-pipeline  = MPUPPipeline(predictor=predictor, prober=MockProber(), top_m=5)
+prober    = MLXProber("mlx-community/Llama-3.2-3B-Instruct-4bit")
+pipeline  = MPUPPipeline(predictor=predictor, prober=prober, top_m=5)
 
 ranked = pipeline.rank(query, passages)
 prompt = pipeline.build_rag_prompt(query, ranked)

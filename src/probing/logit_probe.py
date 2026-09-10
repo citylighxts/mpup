@@ -74,6 +74,41 @@ class LogitProber:
         return [self.probe(query, p, max_length) for p in passages]
 
 
+class MLXProber:
+    """LogitProber backed by an MLX model — no GPU needed, runs on Apple Silicon."""
+
+    def __init__(self, model_name: str = "mlx-community/Llama-3.2-3B-Instruct-4bit"):
+        try:
+            from mlx_lm import load as mlx_load
+            import mlx.core as mx
+            self._mx = mx
+        except ImportError as e:
+            raise ImportError("pip install mlx mlx-lm") from e
+        self._model, self._tokenizer = mlx_load(model_name)
+
+    def _entropy(self, prompt: str) -> tuple[float, float]:
+        mx = self._mx
+        tokens = self._tokenizer.encode(prompt)
+        x = mx.array([tokens])
+        logits = self._model(x)
+        last = logits[0, -1, :].astype(mx.float32)
+        probs = mx.softmax(last)
+        h = float(-mx.sum(probs * mx.log(probs + 1e-10)).item())
+        ppl = float(mx.exp(mx.array(h)).item())
+        return h, ppl
+
+    def probe(self, query: str, passage: str, max_length: int = 512) -> LogitProbeResult:
+        h_base, ppl_base = self._entropy(f"Query: {query}")
+        h_ctx,  ppl_ctx  = self._entropy(f"Context: {passage}\nQuery: {query}")
+        return LogitProbeResult(
+            h_base=h_base, h_ctx=h_ctx, delta_h=h_base - h_ctx,
+            base_perplexity=ppl_base, ctx_perplexity=ppl_ctx,
+        )
+
+    def probe_batch(self, query: str, passages: list[str], max_length: int = 512) -> list[LogitProbeResult]:
+        return [self.probe(query, p, max_length) for p in passages]
+
+
 class MockProber:
     """Deterministic mock for testing without GPU."""
 
