@@ -119,6 +119,51 @@ opposite of the direction the feature's name implies.
 re-examined without paying for GPU extraction again; `--split row` reproduces the old
 behaviour for comparison.
 
+## The feature-design question, measured
+
+Both answerability designs were put against the same true-utility labels, same held-out
+queries, Qwen2.5-7B, on NQ and TriviaQA. Per-query ρ:
+
+| design | NQ | TriviaQA |
+|---|---|---|
+| **ours: top6** | **0.526** | 0.438 |
+| ours: answerability alone | 0.473 | **0.515** |
+| ours, answerability swapped for HyDE | 0.426 | 0.345 |
+| union of both designs | 0.473 | 0.332 |
+| MPUP: D3+D4+D5 + retriever | 0.389 | 0.308 |
+| MPUP: hyde_answerability alone | 0.119 | 0.437 |
+
+Univariate ρ of the individual signals:
+
+| feature | NQ | TriviaQA |
+|---|---|---|
+| `answerability_score` (LLM prompt, per passage) | **0.318** | **0.297** |
+| `hyde_answerability` (lexical overlap, per query) | 0.014 | 0.066 |
+| `entailment_score` (hypothesis = generated answer) | 0.193 | 0.183 |
+| `hyde_entailment` (hypothesis = HyDE claim) | −0.019 | 0.049 |
+| `delta_h` (D5) | −0.025 | 0.037 |
+| `ctx_perplexity` (D5) | 0.014 | −0.099 |
+
+**I expected HyDE to compete and it does not.** Prompting the target LLM per passage and
+reading P(Yes) off the logits is far stronger than lexical overlap against a HyDE claim —
+23x on NQ univariately — and swapping it into the top-6 costs 0.10 on NQ. Adding MPUP's
+D3/D4/D5 to our features makes things **worse** (0.473/0.332 against 0.526/0.438), so on
+these labels they contribute noise rather than signal.
+
+`delta_h` carries essentially nothing on real utility labels, which matches the corrected
+CUDA benchmark where `d5_only` came out at 0.038.
+
+**This is not a flaw in the implementation.** D3/D4/D5 were designed and validated against
+the RAGBench annotation proxy, and against *that* label they do work. They simply do not
+transfer to LLM answer-correctness utility. That is a genuine and non-obvious finding, and it
+is an argument for keeping MPUP's architecture while taking the other project's features.
+
+**The cost argument for HyDE still stands and is worth keeping in view.** HyDE is one decode
+per *query* and needs no access to the target model at ranking time; ours is a forward pass
+per *passage* against the target LLM. On TriviaQA HyDE reaches 0.437 against our 0.515 at a
+fraction of the cost. If deployment cost dominates, that trade may be worth making — but it
+should be presented as a trade, not as equivalent accuracy.
+
 ## Two things in the current results that should be fixed before publication
 
 Neither inflates MPUP's claims — the first actually works against them — but both would be
