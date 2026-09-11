@@ -74,6 +74,68 @@ class LogitProber:
         return [self.probe(query, p, max_length) for p in passages]
 
 
+class QuantizedProber:
+    """LogitProber over a 4-bit NF4 model, batched, sharing one model with HyDE.
+
+    `LogitProber` loads in fp16: a 7B model then needs ~15GB and will not fit an 8GB card,
+    so the D5 features could not be computed on consumer NVIDIA hardware at all.
+
+    It also recomputes `h_base` once per *passage*, although the base prompt contains only
+    the query — for a 4-passage question that is 3 wasted forward passes. Here the base
+    entropy is computed once per query and the context probes are batched.
+    """
+
+    def __init__(self, model_name: str = "Qwen/Qwen2.5-7B-Instruct", llm=None, batch_size: int = 4):
+        if llm is None:
+            from src.data.llm_backend import QuantizedLLM
+
+            llm = QuantizedLLM(model_name, batch_size=batch_size)
+        self.llm = llm
+        self.batch_size = batch_size
+
+    @torch.inference_mode()
+    def _last_token_entropies(self, prompts: list[str], max_length: int = 512) -> list[tuple[float, float]]:
+        tokenizer, model = self.llm.tokenizer, self.llm.model
+        tokenizer.padding_side = "right"
+        out: list[tuple[float, float]] = []
+
+        for start in range(0, len(prompts), self.batch_size):
+            batch = prompts[start : start + self.batch_size]
+            encoded = tokenizer(
+                batch, return_tensors="pt", padding=True, truncation=True, max_length=max_length
+            ).to(model.device)
+            logits = model(**encoded).logits
+            # With right padding the final real token sits at attention_mask.sum() - 1.
+            lengths = encoded["attention_mask"].sum(dim=1) - 1
+            for i, last in enumerate(lengths.tolist()):
+                probs = F.softmax(logits[i, last].float(), dim=-1)
+                entropy = float(-torch.sum(probs * torch.log(probs + 1e-10)))
+                out.append((entropy, float(np.exp(entropy))))
+            del logits
+        return out
+
+    def probe_batch(
+        self, query: str, passages: list[str], max_length: int = 512
+    ) -> list[LogitProbeResult]:
+        h_base, ppl_base = self._last_token_entropies([f"Query: {query}"], max_length)[0]
+        ctx = self._last_token_entropies(
+            [f"Context: {p}\nQuery: {query}" for p in passages], max_length
+        )
+        return [
+            LogitProbeResult(
+                h_base=h_base,
+                h_ctx=h_ctx,
+                delta_h=h_base - h_ctx,
+                base_perplexity=ppl_base,
+                ctx_perplexity=ppl_ctx,
+            )
+            for h_ctx, ppl_ctx in ctx
+        ]
+
+    def probe(self, query: str, passage: str, max_length: int = 512) -> LogitProbeResult:
+        return self.probe_batch(query, [passage], max_length)[0]
+
+
 class MLXProber:
     """LogitProber backed by an MLX model — no GPU needed, runs on Apple Silicon."""
 

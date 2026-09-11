@@ -17,7 +17,18 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
+
+
+def _force_utf8_stdout() -> None:
+    """Windows consoles default to cp1252 and crash on 'ρ' or any passage text."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+_force_utf8_stdout()
 
 import numpy as np
 from datasets import load_dataset
@@ -32,18 +43,36 @@ from experiments.evaluate_baselines import run_evaluation
 from experiments.ablation import run_ablation
 
 MLX_MODEL = "mlx-community/Llama-3.2-3B-Instruct-4bit"
+CUDA_MODEL = "Qwen/Qwen2.5-7B-Instruct"  # 4-bit NF4, fits an 8GB card
 
 
 def _tok(text: str) -> list[str]:
     return re.sub(r"[^\w\s]", " ", text.lower()).split()
 
 
-def build_matrix(subset: str, n_questions: int, use_mlx: bool):
-    ds = load_dataset("galileo-ai/ragbench", subset, split="test", streaming=True)
-    prober = MLXProber(MLX_MODEL) if use_mlx else MockProber(seed=0)
-    hyde = HyDEGenerator(MLX_MODEL) if use_mlx else MockHyDEGenerator()
+def _build_backend(backend: str):
+    """mlx (Apple Silicon), cuda (NVIDIA), or mock (no model).
 
-    X, y = [], []
+    The CUDA path shares one quantized model between the prober and HyDE rather than
+    loading two copies — on an 8GB card a second 7B model does not fit.
+    """
+    if backend == "mlx":
+        return MLXProber(MLX_MODEL), HyDEGenerator(MLX_MODEL)
+    if backend == "cuda":
+        from src.data.llm_backend import QuantizedLLM
+        from src.features.hyde import CUDAHyDEGenerator
+        from src.probing.logit_probe import QuantizedProber
+
+        llm = QuantizedLLM(CUDA_MODEL, batch_size=16)
+        return QuantizedProber(llm=llm), CUDAHyDEGenerator(llm=llm)
+    return MockProber(seed=0), MockHyDEGenerator()
+
+
+def build_matrix(subset: str, n_questions: int, backend: str):
+    ds = load_dataset("galileo-ai/ragbench", subset, split="test", streaming=True)
+    prober, hyde = _build_backend(backend)
+
+    X, y, query_ids = [], [], []
     seen = 0
     for row in ds:
         if seen >= n_questions:
@@ -80,32 +109,48 @@ def build_matrix(subset: str, n_questions: int, use_mlx: bool):
             vec = build_feature_vector(query, passage, probes[d_idx], hyde_answer=claim)
             X.append(vec)
             y.append(u_i)
+            query_ids.append(seen)
 
         seen += 1
         if seen % 10 == 0:
             print(f"  {seen}/{n_questions} questions")
 
-    return np.array(X), np.array(y), seen
+    return np.array(X), np.array(y), np.array(query_ids), seen
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--subset", default="hotpotqa")
     ap.add_argument("--n", type=int, default=100)
-    ap.add_argument("--mock", action="store_true", help="use MockProber/MockHyDE (no MLX)")
+    ap.add_argument("--mock", action="store_true", help="use MockProber/MockHyDE (no model)")
+    ap.add_argument("--backend", choices=["mlx", "cuda", "mock"], default=None,
+                    help="mlx (Apple Silicon), cuda (NVIDIA), mock. Overrides --mock.")
     ap.add_argument("--out", default="results/ragbench_hotpotqa_benchmark.json")
     args = ap.parse_args()
 
-    print(f"Building feature matrix — subset={args.subset} n={args.n} mlx={not args.mock}")
-    X, y, seen = build_matrix(args.subset, args.n, use_mlx=not args.mock)
+    backend = args.backend or ("mock" if args.mock else "mlx")
+    print(f"Building feature matrix — subset={args.subset} n={args.n} backend={backend}")
+    X, y, query_ids, seen = build_matrix(args.subset, args.n, backend=backend)
     print(f"\n{X.shape[0]} pairs / {seen} questions | u_i mean={y.mean():.3f} nonzero={np.mean(y>0)*100:.1f}%")
 
-    split = int(len(X) * 0.8)
-    pred = MPUPPredictor(algorithm="xgboost", n_estimators=200, max_depth=5)
-    pred.fit(X[:split], y[:split])
+    # Split by query, not by row. Passages of one question sit next to each other, so a row
+    # split puts some of a question's passages in train and the rest in test — the features
+    # they share (BM25 rank, the HyDE claim, document set) then leak across the boundary.
+    unique_queries = np.unique(query_ids)
+    rng = np.random.default_rng(42)
+    rng.shuffle(unique_queries)
+    train_queries = set(unique_queries[: int(len(unique_queries) * 0.8)].tolist())
+    is_train = np.array([q in train_queries for q in query_ids])
+    X_tr, y_tr, X_te, y_te = X[is_train], y[is_train], X[~is_train], y[~is_train]
+    print(f"split by query: {is_train.sum()} train / {(~is_train).sum()} test pairs "
+          f"({len(train_queries)}/{len(unique_queries)} questions)")
 
-    results = run_evaluation(X[split:], y[split:], pred, k_shots_list=[5, 10], ndcg_k=10, seed=42)
-    abl = run_ablation(X[:split], y[:split], X[split:], y[split:], ndcg_k=10)
+    pred = MPUPPredictor(algorithm="xgboost", n_estimators=200, max_depth=5)
+    pred.fit(X_tr, y_tr)
+
+    results = run_evaluation(X_te, y_te, pred, k_shots_list=[5, 10], ndcg_k=10, seed=42,
+                             X_train=X_tr, y_train=y_tr)
+    abl = run_ablation(X_tr, y_tr, X_te, y_te, ndcg_k=10)
 
     print(f"\n{'Method':<26} {'ρ':>9} {'NDCG@10':>9}")
     print("-" * 46)
@@ -123,8 +168,12 @@ def main():
         "n_questions": seen,
         "n_pairs": int(X.shape[0]),
         "features": "D1+D2+D3+D4+D5 (14-dim)",
-        "d5_model": MLX_MODEL if not args.mock else "MockProber",
-        "hyde_model": MLX_MODEL if not args.mock else "MockHyDE (rule-based)",
+        "backend": backend,
+        "split": "by query (80/20)",
+        "d5_model": {"mlx": MLX_MODEL, "cuda": CUDA_MODEL}.get(backend, "MockProber"),
+        "hyde_model": {"mlx": MLX_MODEL, "cuda": CUDA_MODEL}.get(
+            backend, "MockHyDE (rule-based)"
+        ),
         "nli_model": "cross-encoder/nli-deberta-v3-small",
         "results": {k: {"spearman_rho": round(v["spearman_rho"], 4),
                         "ndcg_at_10": round(v["ndcg_at_k"], 4)} for k, v in results.items()},
