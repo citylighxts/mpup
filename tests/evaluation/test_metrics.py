@@ -4,6 +4,7 @@ from src.evaluation.metrics import (
     exact_match_score, token_f1_score, combined_score,
     spearman_rho, ndcg_at_k, mrr,
     exact_match, token_f1, evaluate_all,
+    relaxed_match_score, relaxed_combined_score,
 )
 
 
@@ -93,3 +94,39 @@ def test_evaluate_all_with_qa():
     assert "em" in result
     assert "f1" in result
     assert result["em"] == pytest.approx(0.5)
+
+
+# ── Relaxed matching — ported from the UtilityTransfer effort ────────────────
+# Instruction-tuned models answer in sentences, which strict EM scores as wrong.
+# Because utility is a *difference* of correctness, that collapses labels to zero.
+
+def test_relaxed_match_accepts_sentence_answer():
+    assert relaxed_match_score("The answer is Paris.", ["Paris"]) == 1.0
+
+def test_strict_em_rejects_what_relaxed_accepts():
+    assert exact_match_score("The answer is Paris.", ["Paris"]) == 0.0
+
+def test_relaxed_match_rejects_wrong_answer():
+    assert relaxed_match_score("London is the capital", ["Paris"]) == 0.0
+
+def test_relaxed_match_is_token_level_not_substring():
+    # "it" must not match inside "withering"
+    assert relaxed_match_score("withering", ["it"]) == 0.0
+
+def test_relaxed_match_multi_token_gold():
+    assert relaxed_match_score("It was David Seville who did it", ["David Seville"]) == 1.0
+
+def test_relaxed_match_empty_prediction():
+    assert relaxed_match_score("", ["Paris"]) == 0.0
+
+
+# ── token_f1 uses multiset overlap, not set overlap ──────────────────────────
+
+def test_token_f1_counts_repeats_once_per_occurrence():
+    # With set-based overlap the repeated "paris" would be collapsed and precision
+    # would read 1.0; multiset overlap gives the correct 2*(1/3 * 1)/(1/3 + 1) = 0.5.
+    assert token_f1_score("paris paris paris", ["paris"]) == pytest.approx(0.5)
+
+def test_relaxed_combined_score_between_components():
+    score = relaxed_combined_score("The answer is Paris.", ["Paris"])
+    assert score == pytest.approx(0.5 * 1.0 + 0.5 * token_f1_score("The answer is Paris.", ["Paris"]))
