@@ -117,3 +117,83 @@ class UtilityLabeler:
                 score_with_ctx=score_with,
             ))
         return labeled
+
+
+# ---------------------------------------------------------------------------
+# Batched labeler — ported from the UtilityTransfer effort
+# ---------------------------------------------------------------------------
+
+NO_CONTEXT_PROMPT = (
+    "Answer the question as briefly as possible, with just the answer span and no "
+    "explanation.\n\nQuestion: {query}\nAnswer:"
+)
+WITH_CONTEXT_PROMPT = (
+    "Answer the question as briefly as possible, with just the answer span and no "
+    "explanation.\n\nPassage: {passage}\n\nQuestion: {query}\nAnswer:"
+)
+
+
+class BatchedUtilityLabeler:
+    """Label a whole corpus at once, batching generation across queries and passages.
+
+    `UtilityLabeler` answers one passage per forward pass, which leaves most of the GPU
+    idle. Batching brought this to ~0.3s per labelled passage on an RTX 4060, making a
+    35k-label run a matter of hours rather than days.
+
+    The no-context answer is generated once per query and reused across that query's
+    passages — it is the same quantity for all of them, and recomputing it would triple the
+    generation cost for nothing.
+
+    `metric_fn` defaults to `relaxed_combined_score`: with strict EM, an instruction-tuned
+    model's sentence-form answers score as wrong and nearly every utility label collapses
+    to zero.
+    """
+
+    def __init__(self, llm, metric_fn: Callable = None):
+        from src.evaluation.metrics import relaxed_combined_score
+
+        self.llm = llm
+        self.metric_fn = metric_fn or relaxed_combined_score
+
+    def label_corpus(self, items: list[dict]) -> list[dict]:
+        """items: [{"query_id", "query", "gold_answers", "passages": [{"id", "text"}]}]
+
+        Returns one row per (query, passage) with u_true and both component scores.
+        """
+        no_context = self.llm.generate(
+            [NO_CONTEXT_PROMPT.format(query=item["query"]) for item in items]
+        )
+        baseline = {
+            item["query_id"]: self.metric_fn(answer, item["gold_answers"])
+            for item, answer in zip(items, no_context)
+        }
+        baseline_answer = {
+            item["query_id"]: answer for item, answer in zip(items, no_context)
+        }
+
+        flat, owners = [], []
+        for item in items:
+            for passage in item["passages"]:
+                flat.append(
+                    WITH_CONTEXT_PROMPT.format(query=item["query"], passage=passage["text"])
+                )
+                owners.append((item, passage))
+
+        with_context = self.llm.generate(flat)
+
+        rows = []
+        for (item, passage), answer in zip(owners, with_context):
+            score_with = self.metric_fn(answer, item["gold_answers"])
+            score_without = baseline[item["query_id"]]
+            rows.append(
+                {
+                    "query_id": item["query_id"],
+                    "doc_id": passage["id"],
+                    "u_true": float(np.clip(score_with - score_without, -1.0, 1.0)),
+                    "score_no_ctx": score_without,
+                    "score_with_ctx": score_with,
+                    "answer_no_ctx": baseline_answer[item["query_id"]],
+                    "answer_with_ctx": answer,
+                }
+            )
+        return rows
