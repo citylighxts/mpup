@@ -57,8 +57,64 @@ class HyDEGenerator:
         return first_line or query_to_statement(query)
 
 
+HYDE_PROMPT = (
+    "Write exactly one short factual sentence that directly answers the question. "
+    "Do not add explanation.\nQuestion: {query}\nAnswer:"
+)
+
+
+class CUDAHyDEGenerator:
+    """HyDE on NVIDIA hardware, 4-bit quantized, with batched generation.
+
+    `HyDEGenerator` needs `mlx`/`mlx-lm`, which is Apple Silicon only, so the full D1-D5
+    stack could not run on a CUDA machine at all. This closes that gap using the same
+    quantized backend as utility labelling.
+
+    `generate_batch` matters for throughput: HyDE is one decode per *query*, so a 500-query
+    dataset is 500 decodes, and batching turns that from minutes into seconds.
+    """
+
+    def __init__(
+        self,
+        model_name: str = "Qwen/Qwen2.5-7B-Instruct",
+        max_tokens: int = 48,
+        batch_size: int = 16,
+        llm=None,
+    ):
+        if llm is not None:
+            self.llm = llm  # reuse an already-loaded model rather than a second copy
+        else:
+            from src.data.llm_backend import QuantizedLLM
+
+            self.llm = QuantizedLLM(
+                model_name, batch_size=batch_size, max_new_tokens=max_tokens
+            )
+        self.max_tokens = max_tokens
+
+    @staticmethod
+    def _first_line(text: str, query: str) -> str:
+        first = text.strip().split("\n")[0].strip()
+        return first or query_to_statement(query)
+
+    def generate(self, query: str, max_tokens: int | None = None) -> str:
+        out = self.llm.generate(
+            [HYDE_PROMPT.format(query=query)], max_new_tokens=max_tokens or self.max_tokens
+        )
+        return self._first_line(out[0], query)
+
+    def generate_batch(self, queries: list[str], max_tokens: int | None = None) -> list[str]:
+        outputs = self.llm.generate(
+            [HYDE_PROMPT.format(query=q) for q in queries],
+            max_new_tokens=max_tokens or self.max_tokens,
+        )
+        return [self._first_line(text, q) for text, q in zip(outputs, queries)]
+
+
 class MockHyDEGenerator:
     """Deterministic fallback — rule-based statement, no model needed."""
 
     def generate(self, query: str, max_tokens: int = 48) -> str:
         return query_to_statement(query)
+
+    def generate_batch(self, queries: list[str], max_tokens: int = 48) -> list[str]:
+        return [query_to_statement(q) for q in queries]
