@@ -93,6 +93,45 @@ def ndcg_at_k(y_true: np.ndarray, y_pred: np.ndarray, k: int = 10) -> float:
     return float(ndcg_score(y_shifted[np.newaxis, :], y_pred[np.newaxis, :], k=k))
 
 
+def spearman_per_query(
+    y_true: np.ndarray, y_pred: np.ndarray, query_ids: np.ndarray
+) -> float:
+    """Mean within-query Spearman — the quantity a reranker actually controls.
+
+    Global Spearman pools every (query, passage) pair, so part of it is just separating easy
+    queries from hard ones, which no reranker can act on. Queries whose utility is constant
+    are undefined and skipped rather than counted as zero.
+    """
+    query_ids = np.asarray(query_ids)
+    scores = []
+    for qid in np.unique(query_ids):
+        mask = query_ids == qid
+        if mask.sum() < 2:
+            continue
+        truth, pred = np.asarray(y_true)[mask], np.asarray(y_pred)[mask]
+        if np.std(truth) < 1e-12 or np.std(pred) < 1e-12:
+            continue
+        scores.append(spearmanr(pred, truth).statistic)
+    return float(np.nanmean(scores)) if scores else float("nan")
+
+
+def top1_accuracy(y_true: np.ndarray, y_pred: np.ndarray, query_ids: np.ndarray) -> float:
+    """Is the highest-scored passage actually a maximum-utility one?
+
+    Preferred over "top-k accuracy" whenever there are k or fewer passages per query, where
+    that metric is trivially 1.0.
+    """
+    query_ids = np.asarray(query_ids)
+    hits = []
+    for qid in np.unique(query_ids):
+        mask = query_ids == qid
+        truth, pred = np.asarray(y_true)[mask], np.asarray(y_pred)[mask]
+        if len(truth) < 2 or np.std(truth) < 1e-12:
+            continue  # nothing to get right
+        hits.append(float(truth[int(np.argmax(pred))] >= truth.max()))
+    return float(np.mean(hits)) if hits else float("nan")
+
+
 def mrr(relevant_ranks: list[int]) -> float:
     """Mean Reciprocal Rank. relevant_ranks: 1-indexed rank of first relevant doc per query."""
     if not relevant_ranks:

@@ -5,6 +5,7 @@ from src.evaluation.metrics import (
     spearman_rho, ndcg_at_k, mrr,
     exact_match, token_f1, evaluate_all,
     relaxed_match_score, relaxed_combined_score,
+    spearman_per_query, top1_accuracy,
 )
 
 
@@ -130,3 +131,32 @@ def test_token_f1_counts_repeats_once_per_occurrence():
 def test_relaxed_combined_score_between_components():
     score = relaxed_combined_score("The answer is Paris.", ["Paris"])
     assert score == pytest.approx(0.5 * 1.0 + 0.5 * token_f1_score("The answer is Paris.", ["Paris"]))
+
+
+# ── Per-query ranking metrics — ported from the UtilityTransfer effort ───────
+
+def test_spearman_per_query_perfect_predictor():
+    qids = np.array([1, 1, 1, 2, 2, 2])
+    truth = np.array([1.0, 0.0, -1.0, 0.0, 1.0, -1.0])
+    assert spearman_per_query(truth, truth, qids) == pytest.approx(1.0)
+
+def test_spearman_per_query_skips_constant_queries():
+    # query 2 has constant utility — undefined, must be skipped not counted as 0
+    qids = np.array([1, 1, 2, 2])
+    truth = np.array([1.0, -1.0, 0.0, 0.0])
+    pred = np.array([1.0, -1.0, 0.5, 0.2])
+    assert spearman_per_query(truth, pred, qids) == pytest.approx(1.0)
+
+def test_spearman_per_query_differs_from_global():
+    """Global pooling can look good while within-query ranking is wrong."""
+    qids = np.array([1, 1, 2, 2])
+    truth = np.array([1.0, 0.0, 11.0, 10.0])
+    pred = np.array([0.0, 1.0, 10.0, 11.0])  # both queries ranked backwards
+    assert spearman_rho(truth, pred) > 0.5
+    assert spearman_per_query(truth, pred, qids) == pytest.approx(-1.0)
+
+def test_top1_accuracy_picks_best_passage():
+    qids = np.array([1, 1, 1])
+    truth = np.array([0.0, 1.0, -1.0])
+    assert top1_accuracy(truth, np.array([0.1, 0.9, 0.0]), qids) == pytest.approx(1.0)
+    assert top1_accuracy(truth, np.array([0.1, 0.0, 0.9]), qids) == pytest.approx(0.0)
