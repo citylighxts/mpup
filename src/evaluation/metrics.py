@@ -1,13 +1,17 @@
 """Evaluation metrics: Spearman ρ, NDCG@k, MRR, EM, F1, combined_score."""
 import re
 import string
+import unicodedata
+from collections import Counter
+
 import numpy as np
 from scipy.stats import spearmanr
 from sklearn.metrics import ndcg_score
 
 
 def _normalize(text: str) -> str:
-    text = text.lower().strip()
+    # NFD matches the DPR/SQuAD convention and keeps accented gold answers comparable.
+    text = unicodedata.normalize("NFD", text).lower().strip()
     text = re.sub(r"\b(a|an|the)\b", " ", text)
     text = "".join(ch for ch in text if ch not in string.punctuation)
     return " ".join(text.split())
@@ -18,23 +22,60 @@ def exact_match_score(prediction: str, gold_answers: list[str]) -> float:
     return float(any(_normalize(a) == pred for a in gold_answers))
 
 
+def _is_subsequence(needle: list[str], haystack: list[str]) -> bool:
+    if not needle:
+        return False
+    n = len(needle)
+    return any(haystack[i : i + n] == needle for i in range(len(haystack) - n + 1))
+
+
+def relaxed_match_score(prediction: str, gold_answers: list[str]) -> float:
+    """A gold answer appears as a contiguous token span of the prediction (DPR `has_answer`).
+
+    Instruction-tuned models answer in sentences — "The answer is Paris." — which strict EM
+    scores as wrong. When utility is defined as a *difference* of correctness, that pushes
+    nearly every label to zero and destroys the signal. Matching on token spans rather than
+    raw substrings avoids firing on "it" inside "withering".
+    """
+    pred_tokens = _normalize(prediction).split()
+    if not pred_tokens:
+        return 0.0
+    return float(any(_is_subsequence(_normalize(g).split(), pred_tokens) for g in gold_answers))
+
+
 def token_f1_score(prediction: str, gold_answers: list[str]) -> float:
-    pred_tokens = set(_normalize(prediction).split())
+    """SQuAD token F1 — multiset overlap, so repeated tokens count once per occurrence.
+
+    Previously this used `set()`, which discards token multiplicity and inflates precision
+    on answers that repeat a word.
+    """
+    pred_tokens = _normalize(prediction).split()
     best = 0.0
     for gold in gold_answers:
-        gold_tokens = set(_normalize(gold).split())
+        gold_tokens = _normalize(gold).split()
         if not pred_tokens or not gold_tokens:
             continue
-        common = pred_tokens & gold_tokens
-        p = len(common) / len(pred_tokens)
-        r = len(common) / len(gold_tokens)
-        f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
-        best = max(best, f1)
+        common = sum((Counter(pred_tokens) & Counter(gold_tokens)).values())
+        if common == 0:
+            continue
+        p = common / len(pred_tokens)
+        r = common / len(gold_tokens)
+        best = max(best, 2 * p * r / (p + r))
     return best
 
 
 def combined_score(prediction: str, gold_answers: list[str]) -> float:
     return 0.5 * exact_match_score(prediction, gold_answers) + \
+           0.5 * token_f1_score(prediction, gold_answers)
+
+
+def relaxed_combined_score(prediction: str, gold_answers: list[str]) -> float:
+    """`combined_score` with relaxed matching in place of strict EM.
+
+    Recommended for utility labelling with instruction-tuned models; see
+    `relaxed_match_score` for why.
+    """
+    return 0.5 * relaxed_match_score(prediction, gold_answers) + \
            0.5 * token_f1_score(prediction, gold_answers)
 
 
