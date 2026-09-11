@@ -126,24 +126,46 @@ def main():
     ap.add_argument("--backend", choices=["mlx", "cuda", "mock"], default=None,
                     help="mlx (Apple Silicon), cuda (NVIDIA), mock. Overrides --mock.")
     ap.add_argument("--out", default="results/ragbench_hotpotqa_benchmark.json")
+    ap.add_argument("--cache", default=None,
+                    help="npz path; reuse the feature matrix instead of recomputing it")
+    ap.add_argument("--split", choices=["query", "row"], default="query",
+                    help="'row' reproduces the original leaky split; for comparison only")
     args = ap.parse_args()
 
     backend = args.backend or ("mock" if args.mock else "mlx")
-    print(f"Building feature matrix — subset={args.subset} n={args.n} backend={backend}")
-    X, y, query_ids, seen = build_matrix(args.subset, args.n, backend=backend)
+
+    # Building the matrix is the expensive part (minutes of GPU per 100 questions). Caching
+    # it means the split and the baselines can be re-examined without paying that again.
+    cache = Path(args.cache) if args.cache else None
+    if cache and cache.exists():
+        print(f"loading cached feature matrix from {cache}")
+        blob = np.load(cache)
+        X, y, query_ids, seen = blob["X"], blob["y"], blob["query_ids"], int(blob["seen"])
+    else:
+        print(f"Building feature matrix — subset={args.subset} n={args.n} backend={backend}")
+        X, y, query_ids, seen = build_matrix(args.subset, args.n, backend=backend)
+        if cache:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            np.savez(cache, X=X, y=y, query_ids=query_ids, seen=seen)
+            print(f"cached feature matrix to {cache}")
     print(f"\n{X.shape[0]} pairs / {seen} questions | u_i mean={y.mean():.3f} nonzero={np.mean(y>0)*100:.1f}%")
 
     # Split by query, not by row. Passages of one question sit next to each other, so a row
     # split puts some of a question's passages in train and the rest in test — the features
     # they share (BM25 rank, the HyDE claim, document set) then leak across the boundary.
-    unique_queries = np.unique(query_ids)
-    rng = np.random.default_rng(42)
-    rng.shuffle(unique_queries)
-    train_queries = set(unique_queries[: int(len(unique_queries) * 0.8)].tolist())
-    is_train = np.array([q in train_queries for q in query_ids])
+    if args.split == "row":
+        is_train = np.arange(len(X)) < int(len(X) * 0.8)
+        print(f"split by ROW (leaky, for comparison only): {is_train.sum()} train / "
+              f"{(~is_train).sum()} test pairs")
+    else:
+        unique_queries = np.unique(query_ids)
+        rng = np.random.default_rng(42)
+        rng.shuffle(unique_queries)
+        train_queries = set(unique_queries[: int(len(unique_queries) * 0.8)].tolist())
+        is_train = np.array([q in train_queries for q in query_ids])
+        print(f"split by query: {is_train.sum()} train / {(~is_train).sum()} test pairs "
+              f"({len(train_queries)}/{len(unique_queries)} questions)")
     X_tr, y_tr, X_te, y_te = X[is_train], y[is_train], X[~is_train], y[~is_train]
-    print(f"split by query: {is_train.sum()} train / {(~is_train).sum()} test pairs "
-          f"({len(train_queries)}/{len(unique_queries)} questions)")
 
     pred = MPUPPredictor(algorithm="xgboost", n_estimators=200, max_depth=5)
     pred.fit(X_tr, y_tr)

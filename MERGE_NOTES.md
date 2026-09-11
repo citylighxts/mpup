@@ -77,6 +77,48 @@ logprobs sane, unloads cleanly.
 
 ---
 
+## Corrected benchmark numbers
+
+`results/ragbench_hotpotqa_cuda.json` — 100 questions, full D1–D5 on **CUDA** (Qwen2.5-7B,
+4-bit), split by query, Tian baseline retrained.
+
+| | published (MLX, row split, zero-masked baseline) | corrected |
+|---|---|---|
+| MPUP zero-shot ρ | 0.632 | **0.577** |
+| NDCG@10 | 0.765 | 0.764 |
+| Tian et al. baseline ρ | 0.452 | **0.038** |
+
+Two things to note, and the second is good news for MPUP:
+
+**The baseline was the larger error, and fixing it widens MPUP's margin** — from
+0.632 vs 0.452 to 0.577 vs 0.038. The retrained figure also now agrees with the ablation's
+`d5_only = 0.0379`, where the two tables previously disagreed.
+
+**The row split was inflating results by about the amount MPUP's headline dropped.** Run on
+one cached feature matrix with nothing changed but the split:
+
+| split | ρ | NDCG@10 |
+|---|---|---|
+| by query (correct) | 0.4354 | 0.5414 |
+| by row (leaky) | 0.4873 | 0.6414 |
+
+Leakage is worth **+0.052 ρ and +0.100 NDCG**, which closely matches the −0.055 the real run
+lost. So the drop is attributable to the split fix, not to swapping MLX Llama-3.2-3B for
+CUDA Qwen2.5-7B.
+
+**The ablation's NDCG contradiction shrinks but does not vanish**: 4 of 5 leave-one-out
+configs beat the full stack before, 2 of 5 now (dropping D3 or D5). The "every group
+contributes" claim is now true for ρ and still false for NDCG.
+
+**D5 is much weaker on Qwen2.5-7B than on MLX Llama-3.2-3B** — `d5_only` falls from 0.2975 to
+0.0379, and dropping D5 now costs only Δ−0.018. Worth investigating before D5 is presented as
+a contribution: a smoke test showed ΔH coming out *negative* (context raising entropy), the
+opposite of the direction the feature's name implies.
+
+`--cache` now stores the feature matrix so the split, the baselines and the ablation can be
+re-examined without paying for GPU extraction again; `--split row` reproduces the old
+behaviour for comparison.
+
 ## Two things in the current results that should be fixed before publication
 
 Neither inflates MPUP's claims — the first actually works against them — but both would be
