@@ -61,9 +61,9 @@ src/
   features/hyde.py — HyDE pseudo-answer generator (MLX Llama / rule-based mock)
 experiments/
   ablation.py     — leave-one-group-out ablation (retrained per config)
-  evaluate_baselines.py — vs No Retrieval / Full Unranked / Tian et al. 2026
+  evaluate_baselines.py — vs No Retrieval / Full Unranked / logit-probe-only
   run_ragbench_benchmark.py — end-to-end RAGBench benchmark, full D1–D5
-tests/            — 93 tests, ≥95% coverage on core modules
+tests/            — 111 tests, ≥95% coverage on core modules
 configs/
   default.yaml
 ```
@@ -83,36 +83,39 @@ configs/
 
 ## Results — RAGBench HotpotQA (100 questions, 400 pairs)
 
-Full **D1–D5** stack. D5 ΔH + HyDE pseudo-answers from **Llama-3.2-3B-Instruct-4bit via MLX**
-(Apple Silicon, no GPU); D4 NLI from `cross-encoder/nli-deberta-v3-small`.
-Labels: RAGBench `all_utilized_sentence_keys` proxy. 80/20 train/test split.
+Full **D1–D5** stack. D5 ΔH + HyDE pseudo-answers from **Qwen2.5-7B-Instruct** (4-bit, 8GB
+CUDA); D4 NLI from `cross-encoder/nli-deberta-v3-small`. Labels: RAGBench
+`all_utilized_sentence_keys` proxy. **Split by query, 80/20** — a row split leaks features
+shared across one query's passages and inflates ρ by ~0.05.
 
 | Method | Spearman ρ | NDCG@10 |
 |--------|-----------|---------|
-| No Retrieval | 0.000 | 0.233 |
-| Full Unranked | 0.000 | 0.233 |
-| Tian et al. 2026 (D5-only) | 0.452 | 0.535 |
-| **MPUP Zero-Shot (D1–D5)** | **0.632** | **0.765** |
+| No Retrieval | 0.000 | 0.251 |
+| Full Unranked | 0.000 | 0.251 |
+| Logit-probe only (D5) | 0.038 | 0.280 |
+| **MPUP Zero-Shot (D1–D5)** | **0.577** | **0.764** |
 
-Few-shot linear calibration (k=5, 10) leaves ρ and NDCG unchanged — α·f+β is a
-monotonic transform, so it only corrects the *scale* of û for threshold-based
-top-m selection, not the ranking.
+Few-shot *linear* calibration (k=5, 10) leaves ρ and NDCG unchanged — α·f+β is
+order-preserving, so it provably cannot alter a rank metric. It only corrects the scale of û
+for threshold-based top-m selection. Use `FeatureSpaceAdapter` for k-shot adaptation that
+actually changes the ranking.
 
 ### Ablation — leave-one-group-out (retrained per config)
 
-| Config | ρ | NDCG@10 | Δρ vs. full |
-|--------|-----|---------|-------------|
-| **ALL (D1–D5)** | **0.632** | 0.765 | — |
-| drop D2 | 0.320 | 0.489 | **−0.312** |
-| drop D5 | 0.551 | 0.832 | −0.081 |
-| drop D4 | 0.576 | 0.800 | −0.057 |
-| drop D3 | 0.616 | 0.832 | −0.017 |
-| drop D1 | 0.629 | 0.797 | −0.003 |
+| Config | ρ | NDCG@10 | Δρ vs. full | group alone (ρ) |
+|--------|-----|---------|-------------|-----------------|
+| **ALL (D1–D5)** | **0.577** | 0.764 | — | — |
+| drop D2 | 0.439 | 0.367 | **−0.138** | 0.362 |
+| drop D1 | 0.514 | 0.615 | −0.063 | 0.269 |
+| drop D4 | 0.521 | 0.669 | −0.057 | 0.047 |
+| drop D3 | 0.525 | 0.776 | −0.052 | 0.221 |
+| drop D5 | 0.559 | 0.774 | −0.018 | 0.038 |
 
-Every group contributes; the full stack beats every 4-group subset. D2 dominates
-on this proxy label (document length is a strong prior on the *fraction of
-sentences cited*), D5 and the now-fixed D4 each add a clear, independent lift.
-No single group exceeds ρ≈0.50 alone (D2-only 0.503, D5-only 0.298, D1-only 0.113).
+Every group contributes; the full stack beats every 4-group subset. No single group exceeds
+ρ≈0.37 alone — the accuracy comes from the combination, not from any one signal. Ablations are
+**retrained** per configuration; zero-masking columns on a predictor trained with all features
+returns arbitrary values (it gave 0.452 for the D5-only quantity that honest retraining puts
+at 0.038).
 
 ---
 
@@ -122,9 +125,9 @@ No single group exceeds ρ≈0.50 alone (D2-only 0.503, D5-only 0.298, D1-only 0
 |--------|-------------|
 | No Retrieval | Lower bound — no context |
 | Full Unranked | All passages, uniform score |
-| Tian et al. 2026 | D5-only logit probe (target ρ < 0.3) |
+| Logit-probe only | D5 features alone, retrained (isolates the ΔH signal) |
 | MPUP Zero-Shot | Full D1–D5, no calibration |
-| MPUP Few-Shot k={5,10,20} | Linear adapter α·f + β fitted on k examples |
+| MPUP Few-Shot k={5,10,20} | Feature-space ridge adapter fitted on k examples |
 
 ---
 
@@ -134,7 +137,7 @@ No single group exceeds ρ≈0.50 alone (D2-only 0.503, D5-only 0.298, D1-only 0
 pip install -e ".[dev]"
 pip install mlx mlx-lm            # Apple Silicon — D5 + HyDE
 python -m spacy download en_core_web_sm
-pytest                           # 93 tests
+pytest                           # 111 tests
 
 python -m experiments.run_ragbench_benchmark --subset hotpotqa --n 100
 python -m experiments.run_ragbench_benchmark --subset hotpotqa --n 100 --mock  # no MLX

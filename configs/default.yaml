@@ -65,7 +65,7 @@ evaluation:
   baselines:
     - no_retrieval          # lower bound
     - full_unranked         # naive baseline
-    - tian_et_al_2026       # zero-shot logit probing only (ρ < 0.3)
+    - logit_probe_only      # zero-shot logit probing only (D5 features alone)
     - lure_rag              # upper bound (fine-tuned per LLM)
     - rrpo                  # upper bound (fine-tuned per LLM)
   # Ablation: hapus satu feature group dan ukur drop ρ

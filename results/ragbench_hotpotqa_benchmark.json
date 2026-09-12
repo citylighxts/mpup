@@ -15,7 +15,7 @@
       "spearman_rho": 0.0,
       "ndcg_at_10": 0.2327
     },
-    "tian_et_al_2026": {
+    "logit_probe_only": {
       "spearman_rho": 0.452,
       "ndcg_at_10": 0.5345
     },

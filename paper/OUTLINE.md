@@ -56,9 +56,12 @@ Contributions:
 
 Zhang et al. (2026) on LLM-specific utility — **we contradict its central framing** and must
 engage carefully: their claim may hold for the model pairs they study, and our knowledge-gap
-law predicts *when* it holds. Tian et al. (2026) on utility prediction — we reproduce their
-feature families and find the reader-centric ones near-worthless on our labels.
-Perez-Beltrachini & Lapata (2025), Dai et al. (2025) on SePer.
+law predicts *when* it holds. Perez-Beltrachini & Lapata (2025) train a lightweight passage-
+utility model for a target QA model; Dai et al. (2025) measure utility as semantic perplexity
+reduction — we reproduce both feature families and find the reader-centric ones near-worthless
+on our labels. Zhang et al. (2025a/2025b) on utility annotation and distilled selectors;
+Sandhu et al. (2026) on utility-aligned embeddings. See `references.md` — every citation there
+is DOI-verified.
 
 ### 3. Measurement protocol
 

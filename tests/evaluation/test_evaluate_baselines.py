@@ -6,7 +6,7 @@ from experiments.evaluate_baselines import run_evaluation
 
 @pytest.fixture
 def trained_pred():
-    # Labels depend on D1+D2 features, not D5 — so MPUP (all features) outperforms Tian (D5-only)
+    # Labels depend on D1+D2 features, not D5 — so MPUP (all features) beats D5-only
     rng = np.random.default_rng(0)
     X = rng.standard_normal((50, 14))
     y = X[:, 0] * 0.4 + X[:, 4] * 0.4 + rng.standard_normal(50) * 0.1  # D1+D2 driven
@@ -18,7 +18,7 @@ def trained_pred():
 def test_all_baseline_keys_present(trained_pred):
     pred, X_val, y_val = trained_pred
     results = run_evaluation(X_val, y_val, pred, k_shots_list=[5], ndcg_k=5, seed=42)
-    for key in ["no_retrieval", "full_unranked", "tian_et_al_2026", "mpup_zero_shot", "mpup_few_shot_k5"]:
+    for key in ["no_retrieval", "full_unranked", "logit_probe_only", "mpup_zero_shot", "mpup_few_shot_k5"]:
         assert key in results, f"Missing key: {key}"
 
 
@@ -30,12 +30,12 @@ def test_spearman_rho_in_results(trained_pred):
         assert -1.0 <= val["spearman_rho"] <= 1.0
 
 
-def test_mpup_outperforms_tian(trained_pred):
+def test_mpup_outperforms_logit_probe_only(trained_pred):
     pred, X_val, y_val = trained_pred
     results = run_evaluation(X_val, y_val, pred, k_shots_list=[5], ndcg_k=5, seed=42)
-    rho_tian = results["tian_et_al_2026"]["spearman_rho"]
+    rho_probe = results["logit_probe_only"]["spearman_rho"]
     rho_mpup = results["mpup_zero_shot"]["spearman_rho"]
-    assert rho_mpup >= rho_tian
+    assert rho_mpup >= rho_probe
 
 
 def test_deterministic_with_same_seed(trained_pred):

@@ -3,7 +3,7 @@
 Baseline pembanding:
   - no_retrieval          : lower bound — jawab tanpa dokumen sama sekali
   - full_unranked         : naive — pakai semua K kandidat tanpa ranking
-  - tian_et_al_2026       : zero-shot logit probing only (D5 tanpa D1-D4), target ρ < 0.3
+  - logit_probe_only      : zero-shot logit probing only (D5 features, no D1-D4)
   - mpup_zero_shot        : MPUP tanpa kalibrasi
   - mpup_few_shot_k{k}    : MPUP dengan linear adapter dari k contoh
 
@@ -32,7 +32,7 @@ def _only_d5(X: np.ndarray) -> np.ndarray:
 
 
 def _fit_d5_only(X_train: np.ndarray, y_train: np.ndarray, seed: int) -> MPUPPredictor:
-    """Train a predictor on the D5 columns alone — the honest Tian et al. baseline.
+    """Train a predictor on the D5 columns alone — the logit-probe-only baseline.
 
     Zero-masking the other columns and feeding that to a model trained on all 14 features
     does not produce a D5-only prediction: a gradient-boosted model handed
@@ -58,7 +58,7 @@ def run_evaluation(
     X_train: np.ndarray | None = None,
     y_train: np.ndarray | None = None,
 ) -> dict:
-    """Pass `X_train`/`y_train` to get the properly retrained Tian baseline.
+    """Pass `X_train`/`y_train` to get the properly retrained logit-probe-only baseline.
 
     Without them the legacy zero-masked baseline is used, which overstates it.
     """
@@ -81,18 +81,18 @@ def run_evaluation(
         "ndcg_at_k": ndcg_at_k(y_true, y_uniform, k=ndcg_k),
     }
 
-    # ── Tian et al. (2026): D5 only ──────────────────────────────────────────
+    # ── Logit-probe-only baseline: D5 features alone ─────────────────────────
     if X_train is not None and y_train is not None:
         d5_predictor = _fit_d5_only(X_train, y_train, seed)
-        y_tian = d5_predictor.predict(X[:, FEATURE_GROUPS["d5"]])
+        y_probe = d5_predictor.predict(X[:, FEATURE_GROUPS["d5"]])
         note = "D5 logit probe only, retrained on D5 columns"
     else:
-        y_tian = predictor.predict(_only_d5(X))
+        y_probe = predictor.predict(_only_d5(X))
         note = "D5 logit probe only, LEGACY zero-masked (overstated — pass X_train/y_train)"
-    rho_tian = spearman_rho(y_true, y_tian)
-    results["tian_et_al_2026"] = {
-        "spearman_rho": rho_tian,
-        "ndcg_at_k": ndcg_at_k(y_true, y_tian, k=ndcg_k),
+    rho_probe = spearman_rho(y_true, y_probe)
+    results["logit_probe_only"] = {
+        "spearman_rho": rho_probe,
+        "ndcg_at_k": ndcg_at_k(y_true, y_probe, k=ndcg_k),
         "note": note,
     }
 
