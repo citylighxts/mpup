@@ -63,7 +63,7 @@ experiments/
   ablation.py     — leave-one-group-out ablation (retrained per config)
   evaluate_baselines.py — vs No Retrieval / Full Unranked / logit-probe-only
   run_ragbench_benchmark.py — end-to-end RAGBench benchmark, full D1–D5
-tests/            — 111 tests, ≥95% coverage on core modules
+tests/            — 115 tests (≈65% total line coverage; see audit below)
 configs/
   default.yaml
 ```
@@ -74,10 +74,10 @@ configs/
 
 | Dataset | HF path |
 |---------|---------|
-| RAGBench | `galileo-ai/ragbench` |
-| Natural Questions | `google/natural_questions` |
-| MS MARCO | `microsoft/ms_marco v2.1` |
-| TriviaQA | `trivia_qa unfiltered` |
+| RAGBench | `galileo-ai/ragbench` (one config per subset, e.g. `hotpotqa`) |
+| Natural Questions | `google-research-datasets/natural_questions` |
+| MS MARCO | `microsoft/ms_marco`, config `v2.1` |
+| TriviaQA | `mandarjoshi/trivia_qa`, config `unfiltered` |
 
 ---
 
@@ -95,10 +95,11 @@ shared across one query's passages and inflates ρ by ~0.05.
 | Logit-probe only (D5) | 0.038 | 0.280 |
 | **MPUP Zero-Shot (D1–D5)** | **0.577** | **0.764** |
 
-Few-shot *linear* calibration (k=5, 10) leaves ρ and NDCG unchanged — α·f+β is
-order-preserving, so it provably cannot alter a rank metric. It only corrects the scale of û
-for threshold-based top-m selection. Use `FeatureSpaceAdapter` for k-shot adaptation that
-actually changes the ranking.
+Few-shot *linear* calibration with a positive slope leaves ρ and NDCG unchanged — α·f+β is
+order-preserving, so it cannot improve a rank metric. It only corrects the scale of û for
+threshold-based top-m selection. With a small k the fitted slope can come out negative, which
+*inverts* the ranking (see the audit below). Use `FeatureSpaceAdapter` for k-shot adaptation
+that actually changes the ranking.
 
 ### Ablation — leave-one-group-out (retrained per config)
 
@@ -116,6 +117,37 @@ Every group contributes; the full stack beats every 4-group subset. No single gr
 **retrained** per configuration; zero-masking columns on a predictor trained with all features
 returns arbitrary values (it gave 0.452 for the D5-only quantity that honest retraining puts
 at 0.038).
+
+### Audit: re-run on Apple Silicon (2026-10)
+
+The tables above come from a CUDA/Qwen2.5-7B run on a single 80/20 split of 100 questions
+(about 20 test questions). An independent re-run with the MLX backend (Llama-3.2-3B-Instruct
+4-bit for D5 and HyDE, same 100 questions) gave a different picture. The audit scripts are
+not part of this repository; the numbers are reproducible only in outline via
+`run_ragbench_benchmark --backend mlx`.
+
+| Quantity | Result |
+|----------|--------|
+| Benchmark split (seed 42), MPUP zero-shot ρ | 0.515 (README: 0.577) |
+| MPUP ρ over 20 random query splits | 0.554 ± 0.089 (min 0.388, max 0.688) |
+| "Shortest document first" baseline, same 20 splits | 0.406 ± 0.096 |
+| Paired leave-one-group-out Δρ over 30 splits | D2 −0.126, D1 −0.084, D4 −0.022, D5 −0.017, D3 −0.016 |
+| Same benchmark with random mock D5 + rule-based HyDE | ρ ≈ 0.48–0.52 |
+| Linear calibrator, k=5: slope α<0 | 25 of 200 draws; mean ρ 0.368 vs 0.515 zero-shot (worst −0.515) |
+| Linear calibrator, k=10 / k=20: slope α<0 | 4.5% / 0.5% of draws |
+
+Reading this: a single split is too noisy to rank methods (±0.09 across splits). The
+RAGBench proxy label correlates −0.41 with document length (390 test questions), so a length-only
+baseline already reaches ρ≈0.41 and should be reported next to MPUP. D2 (which contains
+length) is the largest contributor. Replacing the LLM-derived D5/HyDE with random and rule-based
+stand-ins lowers mean ρ by about 0.07 (0.48 vs 0.55 over the same 20 splits), so the LLM features
+contribute something, but roughly half of MPUP's margin over the length baseline (+0.08 of
++0.15) is reachable without them. These are single-seed model runs on one dataset, and the
+mock-vs-real gap was not tested for significance.
+
+Test status: 115 tests pass, but total line coverage is about 65%. The "≥95% on core modules"
+holds for the predictor, pipeline, metrics and D1/D2/D5 modules; `llm_backend`,
+`dense_retriever` (0%), `logit_probe` (37%) and `hyde` (49%) are largely untested.
 
 ---
 
@@ -137,7 +169,7 @@ at 0.038).
 pip install -e ".[dev]"
 pip install mlx mlx-lm            # Apple Silicon — D5 + HyDE
 python -m spacy download en_core_web_sm
-pytest                           # 111 tests
+pytest                           # 115 tests
 
 python -m experiments.run_ragbench_benchmark --subset hotpotqa --n 100
 python -m experiments.run_ragbench_benchmark --subset hotpotqa --n 100 --mock  # no MLX
