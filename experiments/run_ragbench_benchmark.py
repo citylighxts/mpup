@@ -23,6 +23,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 
@@ -57,11 +58,12 @@ def _tok(text: str) -> list[str]:
     return re.sub(r"[^\w\s]", " ", text.lower()).split()
 
 
-def _build_backend(backend: str):
+def _build_backend(backend: str, quantization: str = "none", batch_size: int = 16):
     """mlx (Apple Silicon), cuda (NVIDIA), or mock (no model).
 
-    The CUDA path shares one quantized model between the prober and HyDE rather than
-    loading two copies — on an 8GB card a second 7B model does not fit.
+    The CUDA path shares one model between the prober and HyDE rather than loading two
+    copies. `quantization` is "none" (bfloat16, the default on the 48GB RTX 6000 Ada) or
+    "nf4" (the 4-bit setting the original 8GB RTX 4060 runs used).
     """
     if backend == "mlx":
         return MLXProber(MLX_MODEL), HyDEGenerator(MLX_MODEL)
@@ -70,14 +72,16 @@ def _build_backend(backend: str):
         from src.features.hyde import CUDAHyDEGenerator
         from src.probing.logit_probe import QuantizedProber
 
-        llm = QuantizedLLM(CUDA_MODEL, batch_size=16)
-        return QuantizedProber(llm=llm), CUDAHyDEGenerator(llm=llm)
+        llm = QuantizedLLM(CUDA_MODEL, quantization=quantization, batch_size=batch_size,
+                           logprob_batch_size=batch_size)
+        return QuantizedProber(llm=llm, batch_size=batch_size), CUDAHyDEGenerator(llm=llm)
     return MockProber(seed=0), MockHyDEGenerator()
 
 
-def build_matrix(subset: str, n_questions: int, backend: str):
+def build_matrix(subset: str, n_questions: int, backend: str, quantization: str = "none",
+                 batch_size: int = 16):
     ds = load_dataset("galileo-ai/ragbench", subset, split="test", streaming=True)
-    prober, hyde = _build_backend(backend)
+    prober, hyde = _build_backend(backend, quantization, batch_size)
 
     X, y, query_ids = [], [], []
     seen = 0
@@ -147,6 +151,9 @@ def main():
     ap.add_argument("--mock", action="store_true", help="use MockProber/MockHyDE (no model)")
     ap.add_argument("--backend", choices=["mlx", "cuda", "mock"], default=None,
                     help="mlx (Apple Silicon), cuda (NVIDIA), mock. Overrides --mock.")
+    ap.add_argument("--quantization", choices=["none", "nf4"], default="none",
+                    help="cuda backend only: none = bfloat16 weights, nf4 = 4-bit")
+    ap.add_argument("--batch-size", type=int, default=16, help="cuda backend batch size")
     ap.add_argument("--out", default="results/ragbench_hotpotqa_benchmark.json")
     ap.add_argument("--cache", default=None,
                     help="npz path; reuse the feature matrix instead of recomputing it")
@@ -165,13 +172,26 @@ def main():
     # Building the matrix is the expensive part (minutes of GPU per 100 questions). Caching
     # it means the split and the baselines can be re-examined without paying that again.
     cache = Path(args.cache) if args.cache else None
+    hw: dict = {}  # filled only when the matrix is built here, not when loaded from cache
+    build_seconds = None
     if cache and cache.exists():
         print(f"loading cached feature matrix from {cache}")
         blob = np.load(cache)
         X, y, query_ids, seen = blob["X"], blob["y"], blob["query_ids"], int(blob["seen"])
     else:
-        print(f"Building feature matrix — subset={args.subset} n={args.n} backend={backend}")
-        X, y, query_ids, seen = build_matrix(args.subset, args.n, backend=backend)
+        print(f"Building feature matrix — subset={args.subset} n={args.n} backend={backend} "
+              f"quantization={args.quantization}")
+        t0 = time.perf_counter()
+        X, y, query_ids, seen = build_matrix(args.subset, args.n, backend=backend,
+                                             quantization=args.quantization,
+                                             batch_size=args.batch_size)
+        build_seconds = time.perf_counter() - t0
+        if backend == "cuda":
+            import torch
+            peak_gb = torch.cuda.max_memory_allocated() / 2**30
+            print(f"feature matrix built in {build_seconds:.1f}s "
+                  f"({build_seconds / max(seen, 1):.2f}s/question), peak GPU memory {peak_gb:.1f} GiB")
+            hw = {"gpu": torch.cuda.get_device_name(0), "peak_gpu_gib": round(peak_gb, 2)}
         if cache:
             cache.parent.mkdir(parents=True, exist_ok=True)
             np.savez(cache, X=X, y=y, query_ids=query_ids, seen=seen,
@@ -236,6 +256,9 @@ def main():
         "n_pairs": int(X.shape[0]),
         "features": "D1+D2+D3+D4+D5 (14-dim)",
         "backend": backend,
+        "quantization": args.quantization if backend == "cuda" else None,
+        "hardware": hw,
+        "build_seconds": None if build_seconds is None else round(build_seconds, 1),
         "split": "by query (80/20)",
         "d5_model": {"mlx": MLX_MODEL, "cuda": CUDA_MODEL}.get(backend, "MockProber"),
         "hyde_model": {"mlx": MLX_MODEL, "cuda": CUDA_MODEL}.get(

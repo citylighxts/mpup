@@ -28,17 +28,15 @@ from pathlib import Path
 
 import numpy as np
 
-from src.data.mlx_backend import MLXLLM
 from src.data.utility_labeler import BatchedUtilityLabeler
 from src.evaluation.protocol import LABEL_RAGBENCH_PROXY, LABEL_UTILITY
 from src.features.concatenate import FEATURE_DIM, build_feature_vector
 from src.features.hyde import CUDAHyDEGenerator  # generic: works with any `generate(prompts)` LLM
-from src.probing.logit_probe import MLXProber
 from src.retrieval.dense_retriever import DenseRetriever
 from src.retrieval.retriever import RetrievedPassage, candidate_scores
 from src.retrieval.stream_bm25 import CorpusStats, query_terms, score_text
 
-DEFAULT_MODEL = "mlx-community/Llama-3.2-3B-Instruct-4bit"
+DEFAULT_MODEL = {"mlx": "mlx-community/Llama-3.2-3B-Instruct-4bit", "cuda": "Qwen/Qwen2.5-7B-Instruct"}
 DEFAULT_DENSE = "intfloat/multilingual-e5-large"
 
 
@@ -54,7 +52,7 @@ def candidate_bm25(item: dict, stats: CorpusStats) -> list[float]:
     return [p["bm25"] if "bm25" in p else score_text(terms, p["text"], stats) for p in item["passages"]]
 
 
-def item_features(item: dict, claim: str, stats: CorpusStats, dense: DenseRetriever, prober: MLXProber) -> np.ndarray:
+def item_features(item: dict, claim: str, stats: CorpusStats, dense: DenseRetriever, prober) -> np.ndarray:
     texts = [p["text"] for p in item["passages"]]
     norm, ranks, gaps = candidate_scores(candidate_bm25(item, stats))
     cosine = dense.score_passages(item["query"], texts)
@@ -112,11 +110,13 @@ def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data/processed/multidataset")
-    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--backend", choices=["mlx", "cuda"], default="mlx", help="mlx (Apple Silicon) or cuda (NVIDIA)")
+    ap.add_argument("--quantization", choices=["none", "nf4"], default="none", help="cuda only: bf16 weights or 4-bit NF4")
+    ap.add_argument("--model", default=None, help="default depends on --backend")
     ap.add_argument("--dense-model", default=DEFAULT_DENSE)
     ap.add_argument("--datasets", nargs="*", default=None, help="subset of dataset names (default: all)")
     ap.add_argument("--limit", type=int, default=None, help="only the first N questions of each dataset (smoke test)")
-    ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--batch-size", type=int, default=None, help="default 8 (mlx) or 32 (cuda)")
     ap.add_argument("--force", action="store_true", help="recompute datasets that already have features")
     args = ap.parse_args()
 
@@ -130,9 +130,21 @@ def main() -> None:
     out = data if args.limit is None else data / f"smoke{args.limit}"
     out.mkdir(parents=True, exist_ok=True)
 
-    llm = MLXLLM(args.model, batch_size=args.batch_size)
+    model = args.model or DEFAULT_MODEL[args.backend]
+    if args.backend == "mlx":
+        from src.data.mlx_backend import MLXLLM
+        from src.probing.logit_probe import MLXProber
+
+        llm = MLXLLM(model, batch_size=args.batch_size or 8)
+        prober = MLXProber(llm=llm)
+    else:
+        from src.data.llm_backend import QuantizedLLM
+        from src.probing.logit_probe import QuantizedProber
+
+        bs = args.batch_size or 32
+        llm = QuantizedLLM(model, quantization=args.quantization, batch_size=bs, logprob_batch_size=bs)
+        prober = QuantizedProber(llm=llm, batch_size=bs)
     hyde = CUDAHyDEGenerator(llm=llm)
-    prober = MLXProber(llm=llm)
     dense = DenseRetriever(args.dense_model)
     for name in names:
         if (out / "features" / f"{name}.npz").exists() and not args.force:
@@ -140,6 +152,14 @@ def main() -> None:
             continue
         subset = by_name[name][: args.limit] if args.limit else by_name[name]
         process_dataset(name, subset, out, llm, hyde, prober, dense, stats)
+    if args.backend == "cuda":  # the numbers the paper reports about hardware, written next to the features
+        import torch
+
+        info = {"gpu": torch.cuda.get_device_name(0), "model": model, "quantization": args.quantization,
+                "peak_gpu_gib": round(torch.cuda.max_memory_allocated() / 2**30, 2),
+                "batch_size": args.batch_size or 32, "datasets": names, "limit": args.limit}
+        (out / f"run_info_{args.quantization}.json").write_text(json.dumps(info, indent=1))
+        print(f"peak GPU memory {info['peak_gpu_gib']} GiB ({args.quantization})", flush=True)
 
 
 if __name__ == "__main__":

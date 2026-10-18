@@ -14,7 +14,9 @@ Reports (all within-query metrics averaged over queries, 95% bootstrap CI over q
   lodo           train on all other datasets, test on the held-out one
   proxy_transfer train on RAGBench (proxy labels), test on every Eq. (1) dataset, no target labels
 
-Hyperparameters are fixed (200 trees, depth 5), so no nested CV is needed; see the README.
+The reference configuration (200 trees, depth 5) involves no selection. The deployable predictor does:
+it is chosen from a grid, so its headline score comes from `nested_lodo` (selection inside the training
+datasets only). Choosing on the held-out dataset itself overstated rho by 0.028; see the README.
 """
 from __future__ import annotations
 
