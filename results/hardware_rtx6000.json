@@ -21,6 +21,6 @@
  ],
  "full_run_peak_gpu_gib": {
   "bf16": 22.25,
-  "source": "experiments.extract_multidataset --backend cuda --data data/processed/multidataset_seed1 (second question sample, all 12 datasets, 9,554 pairs, batch size 32); torch.cuda.max_memory_allocated, copied from data/processed/multidataset_seed1/run_info_none.json"
+  "source": "experiments.extract_multidataset --backend cuda --data data/processed/multidataset_seed1 (second question sample, all 12 datasets, 9,549 pairs, batch size 32); torch.cuda.max_memory_allocated, copied from data/processed/multidataset_seed1/run_info_none.json"
  }
 }
