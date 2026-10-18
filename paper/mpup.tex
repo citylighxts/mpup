@@ -146,7 +146,8 @@ need to answer the question twice for every passage.
         x=1mm, y=1mm, font=\scriptsize, >=Stealth,
         box/.style={draw, rounded corners=1pt, align=center, inner sep=2pt},
         llm/.style={box, fill=black!15},
-        feat/.style={box, minimum width=16mm, minimum height=10mm},
+        feat/.style={box, minimum width=17mm, minimum height=12mm},
+        num/.style={circle, draw, fill=white, inner sep=0.5pt, font=\tiny},
         train/.style={box, dashed},
         arr/.style={->, thick}]
         % inputs
@@ -154,25 +155,29 @@ need to answer the question twice for every passage.
         \node[box, minimum width=56mm] (p) at (62,0)
             {Candidate passages $d_1,\dots,d_n$ \\ (BM25 top-5 or provided)};
         % hypothetical answer, once per query
-        \node[llm, minimum width=60mm] (h) at (40,-13)
+        \node[llm, minimum width=60mm] (h) at (40,-12)
             {LLM $M$: one hypothetical answer per query \\ (one greedy decode, $\leq$48 tokens)};
         % five feature groups, computed for every passage
-        \node[feat] (d1) at (8,-31)  {D1 (4) \\ retriever \\ scores};
-        \node[feat] (d2) at (26,-31) {D2 (3) \\ passage \\ quality};
-        \node[feat] (d3) at (44,-31) {D3 (2) \\ entity and \\ answer overlap};
-        \node[feat] (d4) at (62,-31) {D4 (2) \\ NLI \\ (DeBERTa)};
-        \node[feat, fill=black!15] (d5) at (80,-31) {D5 (3) \\ logit probing \\ with $M$};
+        \node[feat] (d1) at (8,-29)  {\textbf{D1} retriever \\ BM25, dense, \\ rank, gap};
+        \node[feat] (d2) at (26,-29) {\textbf{D2} passage \\ length, grade, \\ credibility};
+        \node[feat] (d3) at (44,-29) {\textbf{D3} overlap \\ entity, \\ answerability};
+        \node[feat] (d4) at (62,-29) {\textbf{D4} NLI \\ entailment, \\ contradiction};
+        \node[feat, fill=black!15] (d5) at (80,-29) {\textbf{D5} probing \\ base, ctx ppl, \\ $\Delta H$};
         \node[draw, dotted, inner sep=3pt, fit=(d1)(d2)(d3)(d4)(d5)] (frame) {};
-        \node[anchor=north east, inner sep=1pt] at (frame.south east) {for every passage};
         % predictor and selection
-        \node[box, minimum width=48mm] (r) at (28,-49)
+        \node[box, minimum width=48mm] (r) at (28,-44)
             {$\phi(q,d;M)\in\mathbb{R}^{14}$, standardised \\ regressor $f_\theta$ \\ (within-query deviations)};
-        \node[box, minimum width=48mm] (s) at (28,-62)
+        \node[box, minimum width=48mm] (s) at (28,-55)
             {scores $\hat u$: sort, keep top $m$ ($m=5$)};
-        \node[box, minimum width=48mm] (l) at (28,-73)
+        \node[box, minimum width=48mm] (l) at (28,-64)
             {prompt for the target LLM $L$ \\ (not fine-tuned)};
-        \node[train, minimum width=30mm] (t) at (76,-49)
+        \node[train, minimum width=30mm] (t) at (76,-44)
             {training only: \\ true utility, Eq.~\eqref{eq:utility}, \\ computed with $M$ as $L$};
+        % step numbers, explained in the caption
+        \node[num] at (h.north west) {1};
+        \node[num] at (frame.north west) {2};
+        \node[num] at (r.north west) {3};
+        \node[num] at (s.north west) {4};
         % arrows
         \draw[arr] (q.south) -- (q.south |- h.north);
         \draw[arr] (80,0 |- p.south) -- (80,0 |- frame.north);
@@ -184,9 +189,11 @@ need to answer the question twice for every passage.
         \draw[arr] (s) -- (l);
         \draw[arr, dashed] (t.west) -- (r.east);
     \end{tikzpicture}}
-    \caption{Overview of MPUP. The LLM steps with $M$ (shaded) share
-    one model on a single GPU; the target LLM is not fine-tuned.
-    Dashed: used only to train the regressor.}
+    \caption{Overview of MPUP. (1) $M$ writes one hypothetical answer per query.
+    (2) Five feature groups are computed for every passage; D3 and D4 use the answer,
+    D5 probes $M$. (3) A regressor maps the 14 features to a utility score. (4) The top
+    $m$ passages go into the prompt of the target LLM (not fine-tuned). Shaded: uses $M$,
+    one shared model. Dashed: training only.}
     \label{fig:mpup_overview}
 \end{figure}
 
