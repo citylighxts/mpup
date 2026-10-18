@@ -64,3 +64,28 @@ def test_feature_space_adapter_unfitted_is_identity():
     adapter = FeatureSpaceAdapter()
     base = np.array([0.1, 0.5, 0.9])
     assert np.allclose(adapter.transform(np.zeros((3, 6)), base), base)
+
+
+def test_linear_calibrator_never_inverts_the_ranking():
+    # Five examples that happen to disagree with the predictor give a negative least-squares slope.
+    base = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+    true = np.array([0.9, 0.7, 0.8, 0.2, 0.1])
+    cal = LinearCalibrator()
+    cal.fit(base, true)
+    assert cal.fell_back and cal.alpha == 1.0
+    held_out = np.array([0.15, 0.25, 0.45, 0.6])
+    out = cal.transform(held_out)
+    assert np.all(np.diff(out) > 0)  # same order as the input
+    assert cal.beta == pytest.approx(true.mean() - base.mean())
+
+
+def test_linear_calibrator_normal_fit_does_not_fall_back():
+    cal = LinearCalibrator()
+    cal.fit(np.array([0.0, 1.0, 2.0, 3.0]), np.array([0.5, 2.5, 4.5, 6.5]))
+    assert not cal.fell_back and cal.alpha == pytest.approx(2.0)
+
+
+def test_linear_calibrator_constant_predictions_fall_back():
+    cal = LinearCalibrator()
+    cal.fit(np.full(4, 0.3), np.array([0.0, 1.0, 0.0, 1.0]))
+    assert cal.fell_back and cal.alpha == 1.0

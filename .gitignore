@@ -17,3 +17,6 @@ checkpoints/
 *.joblib
 *.ubj
 .superpowers/
+
+# derived and downloaded data (licences differ per dataset; never commit)
+/data/

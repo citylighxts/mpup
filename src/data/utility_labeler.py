@@ -20,6 +20,7 @@ from src.evaluation.metrics import (
     exact_match_score,
     token_f1_score,
     combined_score,
+    relaxed_combined_score,
 )
 
 
@@ -91,7 +92,9 @@ class UtilityLabeler:
     Negative  → passage confuses / misleads the source LLM.
     """
 
-    def __init__(self, answerer: SourceLLMAnswerer, metric_fn: Callable = combined_score):
+    def __init__(self, answerer: SourceLLMAnswerer, metric_fn: Callable = relaxed_combined_score):
+        # Relaxed EM, as in the paper (Eq. 3): instruction-tuned models answer in sentences, and
+        # strict EM would score nearly all of them 0, collapsing every utility label to 0.
         self.answerer = answerer
         self.metric_fn = metric_fn
 

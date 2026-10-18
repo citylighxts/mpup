@@ -1,5 +1,10 @@
 """End-to-end RAGBench benchmark with the full D1–D5 feature stack.
 
+LEGACY single-dataset script, kept to reproduce the first results. It builds D1 from the 3-5 documents
+of one question (BM25 with per-question statistics, dense similarity fixed at 0) and trains on the
+RAGBench annotation proxy, which correlates -0.41 with passage length. The multi-dataset pipeline
+(`prepare_data` -> `extract_multidataset` -> `run_multidataset`) supersedes it.
+
 Pipeline per question:
   1. BM25 over the question's candidate documents            → D1
   2. textstat document-quality features                      → D2
@@ -41,6 +46,8 @@ from src.probing.logit_probe import MLXProber, MockProber
 from src.predictor.mpup_predictor import MPUPPredictor
 from experiments.evaluate_baselines import run_evaluation
 from experiments.ablation import run_ablation
+from experiments.cv_report import cv_report
+from src.evaluation.protocol import LABEL_RAGBENCH_PROXY
 
 MLX_MODEL = "mlx-community/Llama-3.2-3B-Instruct-4bit"
 CUDA_MODEL = "Qwen/Qwen2.5-7B-Instruct"  # 4-bit NF4, fits an 8GB card
@@ -118,6 +125,21 @@ def build_matrix(subset: str, n_questions: int, backend: str):
     return np.array(X), np.array(y), np.array(query_ids), seen
 
 
+def _fmt(ci) -> str:
+    mean, lo, hi = ci
+    return f"{mean:+.3f} [{lo:+.3f}, {hi:+.3f}]"
+
+
+def _print_cv(cv: dict) -> None:
+    print(f"\nCross-validated over queries: {cv['n_splits']}-fold x {cv['n_repeats']} repeats, "
+          f"{cv['n_queries']} queries with a rankable passage set (95% bootstrap CI over queries)")
+    print(f"{'Method':<14} {'ρ per query':>26} {'NDCG@10':>26} {'top-1':>26}")
+    for name, m in cv["models"].items():
+        print(f"{name:<14} {_fmt(m['spearman']):>26} {_fmt(m['ndcg']):>26} {_fmt(m['top1']):>26}")
+    for name, m in cv["paired_vs"].items():
+        print(f"{'mpup - ' + name:<14} {_fmt(m['spearman']):>26} {_fmt(m['ndcg']):>26} {_fmt(m['top1']):>26}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--subset", default="hotpotqa")
@@ -129,7 +151,13 @@ def main():
     ap.add_argument("--cache", default=None,
                     help="npz path; reuse the feature matrix instead of recomputing it")
     ap.add_argument("--split", choices=["query", "row"], default="query",
-                    help="'row' reproduces the original leaky split; for comparison only")
+                    help="'row' cuts the file at 80%% of rows; because a question's passages are stored "
+                         "next to each other this is a contiguous split by question, not a leaky one "
+                         "(measured: it splits no question). Kept for comparison only.")
+    ap.add_argument("--repeats", type=int, default=4,
+                    help="repeats of K-fold over queries for the cross-validated report "
+                         "(0 disables it)")
+    ap.add_argument("--folds", type=int, default=5)
     args = ap.parse_args()
 
     backend = args.backend or ("mock" if args.mock else "mlx")
@@ -146,16 +174,21 @@ def main():
         X, y, query_ids, seen = build_matrix(args.subset, args.n, backend=backend)
         if cache:
             cache.parent.mkdir(parents=True, exist_ok=True)
-            np.savez(cache, X=X, y=y, query_ids=query_ids, seen=seen)
+            np.savez(cache, X=X, y=y, query_ids=query_ids, seen=seen,
+                     dataset=np.array(f"ragbench-{args.subset}"),
+                     label_source=np.array(LABEL_RAGBENCH_PROXY))
             print(f"cached feature matrix to {cache}")
     print(f"\n{X.shape[0]} pairs / {seen} questions | u_i mean={y.mean():.3f} nonzero={np.mean(y>0)*100:.1f}%")
 
-    # Split by query, not by row. Passages of one question sit next to each other, so a row
-    # split puts some of a question's passages in train and the rest in test — the features
-    # they share (BM25 rank, the HyDE claim, document set) then leak across the boundary.
+    # Split by query, not by row: a random row split WOULD put some of a question's passages in
+    # train and the rest in test, and the features they share (BM25 rank, the HyDE claim, the
+    # document set) would leak. The `row` option below is not that: it cuts the file at 80% of
+    # its rows, and since passages of a question are contiguous it only moves the test set to
+    # the last 20% of questions (on the cached MLX run it splits zero questions, and its rho sat
+    # 1.2 sd above the random-question mean, which is ordinary split-to-split variation).
     if args.split == "row":
         is_train = np.arange(len(X)) < int(len(X) * 0.8)
-        print(f"split by ROW (leaky, for comparison only): {is_train.sum()} train / "
+        print(f"contiguous split (last 20% of rows): {is_train.sum()} train / "
               f"{(~is_train).sum()} test pairs")
     else:
         unique_queries = np.unique(query_ids)
@@ -184,8 +217,20 @@ def main():
         lo = abl[f"leave_out_{g}"]
         on = abl[f"only_{g}"]
         print(f"  drop {g}: ρ={lo['spearman_rho']:.4f} (Δ{lo['delta_rho']:+.4f})   {g} only: ρ={on['spearman_rho']:.4f}")
+    print("\n(The tables above are ONE split with global metrics; treat them as a smoke test.)")
+
+    cv = None
+    if args.repeats > 0:
+        length_col = FEATURE_GROUPS["d2"].start  # d2[0] = token_length
+        cv = cv_report(
+            X, y, query_ids,
+            baselines={"length_only": lambda M: -M[:, length_col]},  # shortest passage first
+            n_splits=args.folds, n_repeats=args.repeats, seed=42,
+        )
+        _print_cv(cv)
 
     payload = {
+        "label_source": LABEL_RAGBENCH_PROXY,
         "dataset": f"RAGBench {args.subset} (test split)",
         "n_questions": seen,
         "n_pairs": int(X.shape[0]),
@@ -202,6 +247,7 @@ def main():
         "ablation": {
             k: {kk: round(vv, 4) for kk, vv in v.items()} for k, v in abl.items()
         },
+        "cross_validated": cv,
     }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
