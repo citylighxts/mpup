@@ -8,6 +8,11 @@ try:
     _nlp = spacy.load("en_core_web_sm")
 except Exception:
     _nlp = None
+    # Without the model, "entities" fall back to every lowercased word, which is not what the paper
+    # describes; say so instead of silently changing a feature.
+    import warnings
+    warnings.warn("spaCy model en_core_web_sm not available: entity overlap (D3) falls back to "
+                  "plain word overlap. Install it with `python -m spacy download en_core_web_sm`.")
 
 _STOP = {
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "of", "in", "on",

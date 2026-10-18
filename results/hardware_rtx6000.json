@@ -1,9 +1,26 @@
 {
-  "gpu": "NVIDIA RTX 6000 Ada Generation (46 GiB usable)",
-  "model": "Qwen/Qwen2.5-7B-Instruct",
-  "measured": "2026-10-18, experiments.extract_multidataset --backend cuda --limit 20 --datasets musique hotpotqa (40 questions, the two datasets with the longest contexts), batch size 32; torch.cuda.max_memory_allocated",
-  "peak_gpu_gib": {"bf16": 20.79, "nf4": 7.26},
-  "full_extraction": {"quantization": "bf16", "datasets": 12, "pairs": 9554, "labelled_pairs": 7997,
-                      "wall_clock_seconds": 1613, "note": "sum of per-dataset times in the run log: labels (Eq. 1) + HyDE + D1-D5 features, one GPU; the stage-3 evaluation is CPU-only"},
-  "not_measured": ["peak memory over the full run", "NF4 end-to-end time", "behaviour under an 8 GB memory cap"]
+ "gpu": "NVIDIA RTX 6000 Ada Generation (46 GiB usable)",
+ "model": "Qwen/Qwen2.5-7B-Instruct",
+ "measured": "2026-10-18, experiments.extract_multidataset --backend cuda --limit 20 --datasets musique hotpotqa (40 questions, the two datasets with the longest contexts), batch size 32; torch.cuda.max_memory_allocated",
+ "peak_gpu_gib": {
+  "bf16": 20.79,
+  "nf4": 7.26
+ },
+ "full_extraction": {
+  "quantization": "bf16",
+  "datasets": 12,
+  "pairs": 9554,
+  "labelled_pairs": 7997,
+  "wall_clock_seconds": 1613,
+  "note": "sum of per-dataset times in the run log: labels (Eq. 1) + HyDE + D1-D5 features, one GPU; the stage-3 evaluation is CPU-only"
+ },
+ "not_measured": [
+  "NF4 end-to-end time and full-run peak",
+  "behaviour under an 8 GB memory cap",
+  "selection-time latency per query (HyDE + probing + NLI + regressor) without labelling"
+ ],
+ "full_run_peak_gpu_gib": {
+  "bf16": 22.25,
+  "source": "experiments.extract_multidataset --backend cuda --data data/processed/multidataset_seed1 (second question sample, all 12 datasets, 9,554 pairs, batch size 32); torch.cuda.max_memory_allocated, copied from data/processed/multidataset_seed1/run_info_none.json"
+ }
 }
