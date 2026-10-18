@@ -104,18 +104,25 @@ def run_evaluation(
     }
 
     # ── MPUP Few-Shot (k varied per Notion 6.3) ───────────────────────────────
+    # The k calibration examples are drawn from the evaluation set, so they must not be scored:
+    # a calibrator is always better on the points it was fitted to. Evaluate on the rest only,
+    # and report the zero-shot score on that same rest for an apples-to-apples comparison.
     for k in k_shots_list:
-        if k >= len(X):
+        if k >= len(X) - 1:
             continue
         calib_idx = rng.choice(len(X), k, replace=False)
+        rest = np.setdiff1d(np.arange(len(X)), calib_idx)
         calibrator = LinearCalibrator()
         calibrator.fit(y_mpup_zs[calib_idx], y_true[calib_idx])
         y_mpup_fs = calibrator.transform(y_mpup_zs)
         results[f"mpup_few_shot_k{k}"] = {
-            "spearman_rho": spearman_rho(y_true, y_mpup_fs),
-            "ndcg_at_k": ndcg_at_k(y_true, y_mpup_fs, k=ndcg_k),
+            "spearman_rho": spearman_rho(y_true[rest], y_mpup_fs[rest]),
+            "ndcg_at_k": ndcg_at_k(y_true[rest], y_mpup_fs[rest], k=ndcg_k),
+            "zero_shot_rho_same_rest": spearman_rho(y_true[rest], y_mpup_zs[rest]),
+            "n_eval": int(len(rest)),
             "calibration_alpha": round(calibrator.alpha, 4),
             "calibration_beta": round(calibrator.beta, 4),
+            "calibration_fell_back": bool(calibrator.fell_back),
         }
 
     return results

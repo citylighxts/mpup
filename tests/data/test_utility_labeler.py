@@ -138,3 +138,16 @@ def test_batched_labeler_generates_no_context_answer_once_per_query():
     llm = _ScriptedLLM(["London", "Paris", "Paris"])
     BatchedUtilityLabeler(llm).label_corpus(_items())
     assert llm.calls == 2
+
+
+def test_default_metric_is_relaxed_so_sentence_answers_are_not_scored_wrong():
+    # Instruction-tuned models answer in sentences. With strict EM this answer scores only its
+    # token F1 (0.5 * F1), with relaxed EM the contained gold span also earns the EM half.
+    mock_answerer = MagicMock()
+    mock_answerer.answer_no_context.return_value = "I do not know"
+    mock_answerer.answer_with_context.return_value = "The capital of France is Paris, a large city."
+    labeler = UtilityLabeler(mock_answerer)
+    (res,) = labeler.label_query("Capital of France?", ["Paris"], [{"id": "p0", "text": "Paris."}])
+    strict = combined_score("The capital of France is Paris, a large city.", ["Paris"])
+    assert res.u_true > strict  # strict EM would have given only the F1 half
+    assert res.u_true >= 0.5

@@ -27,6 +27,7 @@ class MPUPPipeline:
         top_m: int = 5,
         utility_threshold: float = 0.0,
         hyde_generator=None,
+        dense_retriever=None,
     ):
         self.predictor = predictor
         self.prober = prober
@@ -34,8 +35,17 @@ class MPUPPipeline:
         self.top_m = top_m
         self.utility_threshold = utility_threshold
         self.hyde_generator = hyde_generator
+        # D1 includes the dense cosine similarity. Without a retriever here it keeps whatever
+        # `dense_score` the passages already carry (0.0 by default), a train/serve mismatch.
+        self.dense_retriever = dense_retriever
 
     def rank(self, query: str, passages: list[RetrievedPassage]) -> list[RankedPassage]:
+        """Score and sort the candidates of ONE query (a query-centred predictor treats them as its group).
+
+        If a dense retriever was given, it fills `dense_score` on `passages` in place first.
+        """
+        if self.dense_retriever is not None:
+            self.dense_retriever.enrich(query, passages)
         probe_results = None
         if self.prober is not None:
             probe_results = self.prober.probe_batch(query, [p.text for p in passages])

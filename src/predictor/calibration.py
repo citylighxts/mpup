@@ -20,15 +20,30 @@ from sklearn.linear_model import LinearRegression, Ridge
 
 
 class LinearCalibrator:
+    """u' = alpha * u_hat + beta, with alpha kept positive so the ranking can never be inverted.
+
+    A least-squares slope fitted on a handful of examples is negative when those examples happen
+    to disagree with the predictor (measured: 12.5% of 5-example draws on one run), and a negative
+    slope reverses the whole ranking. The calibrator exists to fix the *scale* of u_hat, not to
+    overrule its order, so when the fit is not positive it falls back to a pure shift
+    (alpha = 1, beta = mean(true) - mean(base)) and records that in `fell_back`.
+    """
+
     def __init__(self):
         self.alpha: float = 1.0
         self.beta: float = 0.0
+        self.fell_back: bool = False
         self._fitted = False
 
     def fit(self, base_scores: np.ndarray, true_utilities: np.ndarray):
+        base_scores = np.asarray(base_scores, dtype=float)
+        true_utilities = np.asarray(true_utilities, dtype=float)
         reg = LinearRegression().fit(base_scores.reshape(-1, 1), true_utilities)
-        self.alpha = float(reg.coef_[0])
-        self.beta = float(reg.intercept_)
+        alpha, beta = float(reg.coef_[0]), float(reg.intercept_)
+        self.fell_back = alpha <= 0.0
+        if self.fell_back:
+            alpha, beta = 1.0, float(np.mean(true_utilities) - np.mean(base_scores))
+        self.alpha, self.beta = alpha, beta
         self._fitted = True
 
     def transform(self, base_scores: np.ndarray) -> np.ndarray:

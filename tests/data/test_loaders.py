@@ -8,14 +8,23 @@ def test_unknown_dataset_raises():
         list(load_benchmark("nonexistent_dataset"))
 
 
-def test_ragbench_output_structure():
-    mock_row = {
+def _ragbench_row() -> dict:
+    """A row in the real galileo-ai/ragbench schema: there is no `answer` column, the
+    reference text is `response`, and relevance lives in sentence keys."""
+    return {
         "question": "What is Paris?",
-        "answer": "Capital of France",
+        "response": "Capital of France",
         "documents": ["Paris is the capital of France.", "France is in Europe."],
+        "documents_sentences": [
+            [["0a", "Paris is the capital of France."]],
+            [["1a", "France is in Europe."]],
+        ],
+        "all_relevant_sentence_keys": ["0a"],
     }
-    mock_ds = [mock_row]
-    with patch("src.data.loaders.load_dataset", return_value=mock_ds):
+
+
+def test_ragbench_output_structure():
+    with patch("src.data.loaders.load_dataset", return_value=[_ragbench_row()]):
         results = list(load_benchmark("ragbench", max_samples=1))
     assert len(results) == 1
     row = results[0]
@@ -23,6 +32,36 @@ def test_ragbench_output_structure():
     assert "Capital of France" in row["answers"]
     assert len(row["passages"]) == 2
     assert all("id" in p and "text" in p for p in row["passages"])
+
+
+def test_ragbench_passes_config_name_and_marks_relevant_passage():
+    # galileo-ai/ragbench is a multi-config dataset; omitting the config raises
+    # "Config name is missing" on the real Hub.
+    with patch("src.data.loaders.load_dataset", return_value=[_ragbench_row()]) as mock_load:
+        results = list(load_benchmark("ragbench", split="test", max_samples=1))
+    args, kwargs = mock_load.call_args
+    assert args == ("galileo-ai/ragbench", "hotpotqa")
+    assert kwargs["split"] == "test"
+    flags = [p["is_positive"] for p in results[0]["passages"]]
+    assert flags == [True, False]
+
+
+@pytest.mark.parametrize(
+    "name, expected_args",
+    [
+        ("natural_questions", ("google-research-datasets/natural_questions",)),
+        ("triviaqa", ("mandarjoshi/trivia_qa", "unfiltered")),
+        ("msmarco", ("microsoft/ms_marco", "v2.1")),
+    ],
+)
+def test_loaders_use_resolvable_hub_ids_without_trust_remote_code(name, expected_args):
+    # `google/natural_questions` and the legacy `trivia_qa` id no longer resolve, and
+    # datasets>=4 rejects `trust_remote_code` (loading scripts are unsupported).
+    with patch("src.data.loaders.load_dataset", return_value=[]) as mock_load:
+        list(load_benchmark(name, split="validation", max_samples=1))
+    args, kwargs = mock_load.call_args
+    assert args == expected_args
+    assert "trust_remote_code" not in kwargs
 
 
 def test_msmarco_skips_no_answer_rows():

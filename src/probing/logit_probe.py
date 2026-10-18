@@ -137,20 +137,31 @@ class QuantizedProber:
 
 
 class MLXProber:
-    """LogitProber backed by an MLX model — no GPU needed, runs on Apple Silicon."""
+    """LogitProber backed by an MLX model — no GPU needed, runs on Apple Silicon.
 
-    def __init__(self, model_name: str = "mlx-community/Llama-3.2-3B-Instruct-4bit"):
+    Pass `llm` (an `MLXLLM`) to probe with the model that also writes the HyDE answer and the
+    utility labels, instead of loading a second copy. As in `QuantizedProber`, the base entropy
+    depends on the query alone, so `probe_batch` computes it once per query.
+    """
+
+    def __init__(self, model_name: str = "mlx-community/Llama-3.2-3B-Instruct-4bit", llm=None):
         try:
-            from mlx_lm import load as mlx_load
             import mlx.core as mx
             self._mx = mx
         except ImportError as e:
             raise ImportError("pip install mlx mlx-lm") from e
-        self._model, self._tokenizer = mlx_load(model_name)
+        if llm is not None:
+            self._model, self._tokenizer = llm.model, llm.tokenizer
+        else:
+            from mlx_lm import load as mlx_load
+            self._model, self._tokenizer = mlx_load(model_name)
 
-    def _entropy(self, prompt: str) -> tuple[float, float]:
+    def _entropy(self, prompt: str, max_length: int = 512) -> tuple[float, float]:
+        """(entropy in nats, perplexity = exp(entropy)) of the next-token distribution."""
         mx = self._mx
         tokens = self._tokenizer.encode(prompt)
+        if len(tokens) > max_length:
+            tokens = tokens[:1] + tokens[-(max_length - 1):]  # keep BOS and the end, where the query is
         x = mx.array([tokens])
         logits = self._model(x)
         last = logits[0, -1, :].astype(mx.float32)
@@ -159,16 +170,26 @@ class MLXProber:
         ppl = float(mx.exp(mx.array(h)).item())
         return h, ppl
 
-    def probe(self, query: str, passage: str, max_length: int = 512) -> LogitProbeResult:
-        h_base, ppl_base = self._entropy(f"Query: {query}")
-        h_ctx,  ppl_ctx  = self._entropy(f"Context: {passage}\nQuery: {query}")
+    def _result(self, base: tuple[float, float], ctx: tuple[float, float]) -> LogitProbeResult:
         return LogitProbeResult(
-            h_base=h_base, h_ctx=h_ctx, delta_h=h_base - h_ctx,
-            base_perplexity=ppl_base, ctx_perplexity=ppl_ctx,
+            h_base=base[0], h_ctx=ctx[0], delta_h=base[0] - ctx[0],
+            base_perplexity=base[1], ctx_perplexity=ctx[1],
+        )
+
+    def probe(self, query: str, passage: str, max_length: int = 512) -> LogitProbeResult:
+        return self._result(
+            self._entropy(f"Query: {query}", max_length),
+            self._entropy(f"Context: {passage}\nQuery: {query}", max_length),
         )
 
     def probe_batch(self, query: str, passages: list[str], max_length: int = 512) -> list[LogitProbeResult]:
-        return [self.probe(query, p, max_length) for p in passages]
+        if not passages:
+            return []
+        base = self._entropy(f"Query: {query}", max_length)
+        return [
+            self._result(base, self._entropy(f"Context: {p}\nQuery: {query}", max_length))
+            for p in passages
+        ]
 
 
 class MockProber:
