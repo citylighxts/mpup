@@ -11,6 +11,7 @@
 \usepackage{tabularx}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,fit}
+\setlength{\textfloatsep}{12pt plus 2pt minus 4pt}
 % Visible marker for numbers/statements that still need a measured value. Must be gone before submission.
 \newcommand{\TODO}[1]{\textbf{\textcolor{red}{[TODO: #1]}}}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
@@ -59,9 +60,9 @@ email address or ORCID}
 \maketitle
 
 \begin{abstract}
-Retrieval-Augmented Generation (RAG) systems rank passages by topical relevance, yet relevance and usefulness are not the same thing. A passage that matches a query may still fail to help the model answer. Recent utility-aware RAG methods proven to be impractical because existing methods either fine-tune a reranker or retriever’s embedding model for every target LLM, or run the target LLM on every candidate passage at selection time, which takes up high cost, memory, and computation. Meta-Probing Utility Predictor (MPUP) is a method to predict LLM-specific retrieval utility without fine-tuning the target model.
+Retrieval-Augmented Generation (RAG) systems rank passages by topical relevance, yet relevance and usefulness are not the same thing. Even a passage that matches a query may fail to help the model answer. Recent utility-aware RAG methods proven to be impractical because existing methods either fine-tune a reranker or retriever’s embedding model for every target LLM, or run the target LLM on every candidate passage at selection time, which takes up high cost, memory, and computation. Meta-Probing Utility Predictor (MPUP) is a method to predict LLM-specific retrieval utility without fine-tuning the target model.
 
-MPUP turns each query--passage pair into 14 inexpensive features: retriever scores, passage statistics, entity overlap, an NLI check against a hypothetical answer, and the change in the next-token entropy of one LLM caused by the passage. A small regressor trained on within-query deviations ranks the passages, and the target LLM is never fine-tuned. On eleven question-answering datasets labelled with the true utility, with the predictor selected by nested leave-one-dataset-out, MPUP reaches a within-query Spearman correlation of 0.33 with the true utility, against 0.12 for BM25 and 0.29 for dense similarity. The gain over dense similarity is small ($+0.04$, 95\% CI $[+0.02, +0.06]$), and the predictor stated first in this paper is worse than dense similarity alone. With the configuration frozen, a second sample of questions gives 0.31 against 0.28 for dense similarity. The pipeline peaks at 21--22 GiB of GPU memory in bfloat16; with 4-bit NF4 weights it peaked at about 7 GiB on a small sample.
+MPUP turns each query--passage pair into 14 inexpensive features: retriever scores, passage statistics, entity overlap, an NLI check against a hypothetical answer, and the change in the next-token entropy of one LLM caused by the passage. Passages are ranked by a small regressor trained on within-query deviations, and the target LLM is never fine-tuned. On eleven question-answering datasets labelled with the true utility, with the predictor selected by nested leave-one-dataset-out, MPUP reaches a within-query Spearman correlation of 0.33 with the true utility, against 0.12 for BM25 and 0.29 for dense similarity. The gain over dense similarity is small ($+0.04$, 95\% CI $[+0.02, +0.06]$), and the predictor stated first in this paper is worse than dense similarity alone. With the configuration frozen, a second sample of questions gives 0.31 against 0.28 for dense similarity. The pipeline peaks at 21--22 GiB of GPU memory in bfloat16; with 4-bit NF4 weights it peaked at about 7 GiB on a small sample.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -73,7 +74,7 @@ Large language models (LLMs) are Transformer-based neural networks pre-trained o
 
 LLMs often produce hallucinations which are outputs unfaithful to the source or factually incorrect~\cite{ji2023}, because their knowledge is stored and frozen at training time, making them cannot be corrected without retraining~\cite{huang2025}. Retrieval-Augmented Generation (RAG) addresses this problem by retrieving relevant documents from external sources and do generation on that retrieved evidence, so the model draws on up-to-date information instead of only memorized parameters~\cite{fan2024}. RAGs have multiple methods to retrieve the documents, one of them is traditional RAG which select documents purely by topical relevance where the contents match the queries, which works worse than RAG systems where the documents are selected by their utility for the model~\cite{zhang2026}.
 
-Selecting documents or passages based on their utility in RAG is done by seeing whether the passage providing it as evidence measurably improves a LLM's ability to generate an accurate answer compared to answering without any evidence~\cite{zhang2026}. To measure this, two cases need to be compared. In the first, the model answers from its internal memory alone. In the second, the same model answers with a specific retrieved passage available to it. A standard correctness metric scores both answers, and a passage counts as useful only when the second answer is more accurate than the first. Applying the same test to a large pool of candidates leaves only the passages that actually help that model~\cite{zhang2026}.
+Selecting documents or passages based on their utility in RAG is done by seeing whether the passage providing it as evidence measurably improves a LLM's ability to generate an accurate answer compared to answering without any evidence~\cite{zhang2026}. To measure this, two cases need to be compared. In the first, the model answers from its internal memory alone. In the second, the same model answers with a specific retrieved passage available to it. Both answers are scored by a standard correctness metric, and a passage counts as useful only when the second answer is more accurate than the first. Applying the same test to a large pool of candidates leaves only the passages that actually help that model~\cite{zhang2026}.
 
 However, how can a practitioner estimate passage utility under realistic, low-budget conditions? Existing methods are too expensive for practical deployment, because they require a 32-billion-parameter teacher model to produce supervision~\cite{zhang2025b}, completely retraining the retriever's embedding model using complex objectives~\cite{sandhu2026}, or running the target LLM twice for every single query~\cite{zhang2025c}.
 
@@ -81,9 +82,9 @@ There are cheap alternatives method compared to LLM sampling. Semantic Perplexit
 
 Several other methods have been explored. There are LURE-RAG which introduces a lightweight LambdaMART reranker trained with a listwise utility loss to optimize context ordering, but relying on complex listwise utility supervision requires generating query and passage combinations, making the labeling cost expensive~\cite{chandra2026}. Another approach is RRPO, where passages selection treated as a sequential decision process trained via reinforcement learning directly from LLM feedback, which also which takes up big part of the memory and computation~\cite{wu2026}. The current existing methods either require substantial memory and computational resources, or incur high costs.
 
-This paper closes the gap with Meta-Probing Utility Predictor (MPUP). MPUP is a method to predict LLM-specific retrieval utility which means it can select the most useful passages for models without fine-tuning any model. Instead of having the target LLM answer with and without every passage~\cite{zhang2025c} or scoring each passage with a separate evaluation model~\cite{dai2025}, MPUP evaluates a passage’s usefulness by looking at 14 practical clues, such as document statistics, meaning overlap, and agreement with a hypothetical answer. Only three of them read the logits of an LLM, through one forward pass per passage (logit probing). MPUP runs its two LLM-based steps, one short generation per query and the probing pass, with one shared model on a single GPU and does not train any LLM. Its measured memory footprint and extraction time are reported in Section IV.
+This paper closes the gap with Meta-Probing Utility Predictor (MPUP). MPUP is a method to predict LLM-specific retrieval utility which means it can select the most useful passages for models without fine-tuning any model. Instead of having the target LLM answer with and without every passage~\cite{zhang2025c} or scoring each passage with a separate evaluation model~\cite{dai2025}, MPUP evaluates a passage’s usefulness by looking at 14 practical clues, such as document statistics, meaning overlap, and agreement with a hypothetical answer. Only three of them read the logits of an LLM, through one forward pass per passage (logit probing). MPUP runs its two LLM-based steps, one short generation per query and the probing pass, with one shared model on a single GPU and does not train any LLM. The measured memory footprint and extraction time are reported in Section IV.
 
-This paper makes three contributions. The first is that many cheap features, used together, rank passages by true utility better than the retriever's own score (BM25) and slightly better than a strong dense-similarity baseline, without a utility-specific model and without having an LLM generate an answer for each passage. The gain over dense similarity is small, and we report it with confidence intervals. The pipeline also runs on a single GPU, and its measured peak memory is reported in Section IV. The second is a predictor that is trained once and is not retrained when the LLM that answers the question changes. We train and evaluate it with one source LLM at a time, so its transfer to other target LLMs is not tested in this paper. The third is that the predictor can also be trained on annotations that already exist in the dataset, which are cheaper than labels produced by running the target LLM over every passage~\cite{zhang2025a}. Such a predictor beats BM25 on nine of eleven datasets but not dense similarity.
+This paper makes three contributions. The first is that many cheap features, used together, rank passages by true utility better than the retriever's own score (BM25) and slightly better than a strong dense-similarity baseline, without a utility-specific model and without having an LLM generate an answer for each passage. The gain over dense similarity is small, and we report it with confidence intervals. The pipeline also runs on a single GPU, and its measured peak memory is reported in Section IV. The second is a predictor that is trained once and is not retrained when the LLM that answers the question changes. The predictor is trained and evaluated with one source LLM at a time, so transfer to other target LLMs is not tested in this paper. The third is that the predictor can also be trained on annotations that already exist in the dataset, which are cheaper than labels produced by running the target LLM over every passage~\cite{zhang2025a}. Such a predictor beats BM25 on nine of eleven datasets but not dense similarity.
 
 The remainder of this paper is organized as follows. Section II reviews related work on retrieval-augmented generation, utility-based passage selection, and lightweight utility prediction. Section III describes the proposed Meta-Probing Utility Predictor, covering the 14 features, the predictor architecture, and the model and hardware setup. Section IV presents the experimental setup, datasets, and evaluation metrics, followed by the results and analysis, while Section V concludes the paper and outlines directions for future work.
 
@@ -125,15 +126,15 @@ MPUP is compared to eight previous studies which were based on six criteria, pre
     \end{tabular}
 \end{table}
 
-Table~\ref{tab:mpup_positioning} shows how the studies differ. Methods that reach high accuracy through the target LLM~\cite{zhang2025c,dai2025} fail the lightweight and per-query cost criteria, while lightweight methods~\cite{perez2025,tian2026} either remain tied to one model or lose accuracy. LURE-RAG~\cite{chandra2026} is the one study that reports reusing a predictor, trained on the utilities of one LLM, for other LLMs (its fourth research question), but its labels come from running an LLM. MPUP meets C2 by design. It still runs an LLM at selection time (one short generation per query and one probing pass per passage), so it meets C3 only in part, and its memory use meets C1 only in 4-bit precision, which we measured on a small sample. For C4--C6 this paper gives only partial evidence. All partial marks are shown as $\sim$ in the table.
+Table~\ref{tab:mpup_positioning} shows how the studies differ. Methods that reach high accuracy through the target LLM~\cite{zhang2025c,dai2025} fail the lightweight and per-query cost criteria, while lightweight methods~\cite{perez2025,tian2026} either remain tied to one model or lose accuracy. LURE-RAG~\cite{chandra2026} is the one study that reports reusing a predictor, trained on the utilities of one LLM, for other LLMs (its fourth research question), but its labels come from running an LLM. MPUP meets C2 by design. MPUP still runs an LLM at selection time (one short generation per query and one probing pass per passage), so it meets C3 only in part, and its memory use meets C1 only in 4-bit precision, which was measured on a small sample. For C4--C6 this paper gives only partial evidence. All partial marks are shown as $\sim$ in the table.
 
-Utility-based selection is only useful if people can actually run it. Many practitioners have access to only a single GPU and a limited budget, not a training cluster. Methods that need very large models, retriever retraining, or two LLM runs for every query are out of reach for them. Methods that are cheap but tied to one LLM create another problem, because the predictor must be rebuilt whenever the LLM is replaced. Lightweight methods with low accuracy are also not helpful, since they often pick the wrong passages. A predictor that is lightweight and does not have to be rebuilt for each new LLM would remove these barriers, provided that its ranking is good enough to help. MPUP is designed for this purpose by combining many cheap features into one predictor, and Section~IV measures how good its ranking is.
+Utility-based selection is only useful if people can actually run it. Many practitioners have access to only a single GPU and a limited budget, not a training cluster. Methods that need very large models, retriever retraining, or two LLM runs for every query are out of reach for them. Methods that are cheap but tied to one LLM create another problem, because the predictor must be rebuilt whenever the LLM is replaced. Lightweight methods with low accuracy are also not helpful, since they often pick the wrong passages. These barriers would be removed by a predictor that is lightweight and does not have to be rebuilt for each new LLM, provided that its ranking is good enough to help. MPUP is designed for this purpose by combining many cheap features into one predictor, and Section~IV measures how good its ranking is.
 
 \section{Methodology}
 Fig.~\ref{fig:mpup_overview} shows the MPUP pipeline. For each query, MPUP first asks an
 LLM $M$ to write one short hypothetical answer. Then, for every
 candidate passage, it extracts 14 features from five feature families.
-A trained regressor maps these features to a utility score, and an
+The trained regressor maps these features to a utility score, and an
 optional calibration step adjusts the scale of the score. The passages
 are ranked by the score, and the top passages are placed in the prompt
 of the target LLM. The target LLM is never fine-tuned, and it does not
@@ -191,7 +192,7 @@ need to answer the question twice for every passage.
     \end{tikzpicture}}
     \caption{Overview of MPUP. (1) $M$ writes one hypothetical answer per query.
     (2) Five feature groups are computed for every passage; D3 and D4 use the answer,
-    D5 probes $M$. (3) A regressor maps the 14 features to a utility score. (4) The top
+    D5 probes $M$. (3) The regressor maps the 14 features to a utility score. (4) The top
     $m$ passages go into the prompt of the target LLM (not fine-tuned). Shaded: uses $M$,
     one shared model. Dashed: training only.}
     \label{fig:mpup_overview}
@@ -215,7 +216,7 @@ Where $L(q,\varnothing)$ is the answer of $L$ from its own memory alone,
 and $L(q,d)$ is the answer of $L$ when it reads $d$.
 $\operatorname{Acc}(\cdot)$ is a standard correctness metric. Passage
 is useful only if reading it improves the model, which means $u>0$.
-A value of zero means the passage adds nothing, and a negative value
+Zero utility means the passage adds nothing, and a negative value
 means it makes the answer worse.
 
 If we test a pool of candidate passages $\mathcal{C}$ in this way and
@@ -242,7 +243,7 @@ token-level F1 against the gold answers:
 \end{equation}
 
 Relaxed exact match counts an answer as correct when a gold answer
-appears inside it as a token span. We use it because instruction-tuned
+appears inside it as a token span. Relaxed matching is used because instruction-tuned
 LLMs answer in full sentences, and strict exact match would mark most
 of them wrong, which pushes almost every utility to zero. The value
 of $u$ lies in $[-1,1]$.
@@ -261,8 +262,7 @@ $\widetilde{\mathcal{G}}$ are ranked first:
 
 where $\phi(q,d;M)\in\mathbb{R}^{14}$ is the feature vector and
 $f_{\theta}$ is the predictor. $M$ is the LLM used for the two
-LLM-based steps, the hypothetical answer and logit probing. It can
-be the target LLM $L$ or a fixed model. In our experiments, $M$ is
+LLM-based steps, the hypothetical answer and logit probing. Either the target LLM $L$ or a fixed model can serve as $M$. In our experiments, $M$ is
 Qwen2.5-7B-Instruct. The predictor $f_{\theta}$ is trained once,
 and it is not retrained when $L$ changes.
 
@@ -277,8 +277,7 @@ fraction of content words of the hypothetical answer that appear in
 the passage. D4 checks faithfulness with a DeBERTa-v3-small NLI model.
 The passage is the premise and the hypothetical answer is the
 hypothesis, and we keep the entailment and contradiction probabilities.
-D5 probes the LLM $M$. We compute the entropy of its next-token
-distribution at the end of two prompts: the query alone
+D5 probes the LLM $M$. The entropy of its next-token distribution is computed at the end of two prompts: the query alone
 ($H_{\text{base}}$) and the passage followed by the query
 ($H_{\text{ctx}}$). The features are the two perplexities $\exp(H)$
 and the difference
@@ -302,15 +301,14 @@ answer is generated once per query and shared by D3 and D4.
     \end{tabularx}
 \end{table}
 
-The features are standardized and passed to a regressor. We consider two
-kinds. The reference configuration is a gradient-boosted regression tree
+The features are standardized and passed to a regressor. Two kinds are considered. The reference configuration is a gradient-boosted regression tree
 model (200 trees, depth 5, learning rate 0.05, subsample 0.8) trained on
 the raw features. The second kind trains on within-query deviations: the
 mean of the query is subtracted from every feature and from the label
 before fitting, and at inference the candidates of the query being ranked
-form that group. A large part of the raw utility is an offset per query
+form that group. Much of the raw utility is an offset per query
 (a question that the LLM already answers makes every passage useless),
-which no reranker can use. A centred model spends no capacity on it, and
+which no reranker can use. The centred model spends no capacity on it, and
 its scores mean ``better or worse than the average candidate''. The
 configuration is chosen from a grid of twelve (ridge regression with three
 regularization strengths and gradient-boosted trees of three sizes, each
@@ -338,8 +336,7 @@ as the source LLM. The no-context answer is generated once per query and
 reused for all passages of that query.
 
 Optionally, $\hat{u}$ can be calibrated when labels from the target
-LLM are available for $k$ passages. We fit $\alpha$ and $\beta$ by
-linear regression on these $k$ examples and use
+LLM are available for $k$ passages. The coefficients $\alpha$ and $\beta$ are fitted by linear regression on these $k$ examples, and the calibrated score is
 
 \begin{equation}
     \hat{u}' = \alpha \cdot \hat{u} + \beta.
@@ -347,7 +344,7 @@ linear regression on these $k$ examples and use
 \end{equation}
 
 This changes the scale of $\hat{u}$, which matters for the threshold
-$\tau$. It does not change the ranking as long as $\alpha > 0$,
+$\tau$. The ranking does not change as long as $\alpha > 0$,
 because the order of the scores stays the same. Calibration is not
 used in the main results.
 
@@ -358,8 +355,7 @@ loading a second 7B model, and full-precision weights mean that no
 quantization error enters the probing and generation steps. The
 implementation can instead load $M$ in 4-bit NF4 with double
 quantization to reduce memory; we report peak memory for both settings
-in Section IV. It also has an
-Apple Silicon backend that uses a 4-bit Llama-3.2-3B-Instruct through
+in Section IV. The implementation also has an Apple Silicon backend that uses a 4-bit Llama-3.2-3B-Instruct through
 MLX. The NLI model and the regressor are small and run without
 quantization.
 
@@ -372,7 +368,7 @@ can also drop passages with a score $\leq \tau$. With the selected
 predictor, which is trained on within-query deviations, the score is
 relative to the other candidates of the same query, so $\tau = 0$
 would drop roughly the less useful half of the candidates rather than
-the passages with negative utility. We therefore apply no threshold.
+the passages with negative utility. No threshold is therefore applied.
 Neither choice is evaluated by answer accuracy in this paper.
 
 \section{Experimental Setup}
@@ -415,12 +411,12 @@ the paragraphs they provide.
 
 
 \subsection{Evaluation protocol}
-All metrics are computed within each query and then averaged over queries, because a reranker can only order the passages of one query. A query is used when it has at least two passages and its true utilities are not all equal (747 of the 1,100 queries with gold answers). The main metric is the Spearman correlation $\rho$ between the predicted score and the true utility. Intervals are 95\% percentile bootstrap intervals over queries (2,000 resamples), and differences between methods are paired on the same queries. Splits are always by query, never by row.
+All metrics are computed within each query and then averaged over queries, because a reranker can only order the passages of one query. Queries are used when they have at least two passages and their true utilities are not all equal (747 of the 1,100 queries with gold answers). The main metric is the Spearman correlation $\rho$ between the predicted score and the true utility. Intervals are 95\% percentile bootstrap intervals over queries (2,000 resamples), and differences between methods are paired on the same queries. Splits are always by query, never by row.
 
-The predictor is chosen from data, so its score is estimated with nested leave-one-dataset-out. One dataset is held out. Among the other ten, each of the twelve configurations is scored by leave-one-dataset-out and the best is kept. It is refitted on those ten datasets and scored on the held-out one, whose labels are not used for the choice. Choosing the best configuration on the held-out dataset itself would have reported $\rho=0.357$, which is 0.024 above the nested estimate. The grid was designed after an earlier run on the same questions with a smaller 3B model had shown that the reference configuration was weak, so even the nested estimate is slightly optimistic. The reference configuration is also reported without any selection.
+The predictor is chosen from data, so its score is estimated with nested leave-one-dataset-out. One dataset is held out. Among the other ten, each of the twelve configurations is scored by leave-one-dataset-out and the best is kept. The best configuration is refitted on those ten datasets and scored on the held-out one, whose labels are not used for the choice. Choosing the best configuration on the held-out dataset itself would have reported $\rho=0.357$, which is 0.024 above the nested estimate. The grid was designed after an earlier run on the same questions with a smaller 3B model had shown that the reference configuration was weak, so even the nested estimate is slightly optimistic. The reference configuration is also reported without any selection.
 
 \subsection{Setup}
-The LLM $M$ is Qwen2.5-7B-Instruct in bfloat16 on one NVIDIA RTX 6000 Ada GPU. It writes the hypothetical answer, produces the probing features, and acts as the source LLM that defines the true utility (greedy decoding, at most 32 new tokens, relaxed exact match). The dense feature and the dense baseline use multilingual-E5-large. The baselines are BM25 and dense cosine similarity used alone as ranking scores.
+The LLM $M$ is Qwen2.5-7B-Instruct in bfloat16 on one NVIDIA RTX 6000 Ada GPU. This LLM writes the hypothetical answer, produces the probing features, and acts as the source LLM that defines the true utility (greedy decoding, at most 32 new tokens, relaxed exact match). The dense feature and the dense baseline use multilingual-E5-large. The baselines are BM25 and dense cosine similarity used alone as ranking scores.
 
 \subsection{Results}
 Table~\ref{tab:main} shows the held-out results. MPUP, selected by nested leave-one-dataset-out, reaches a macro-average $\rho$ of 0.333, against 0.289 for dense similarity, 0.117 for BM25, and 0.227 for the reference configuration. Over all 747 held-out queries, the paired gain over BM25 is +0.20 [+0.16, +0.24] and over dense similarity +0.04 [+0.02, +0.06]. The gain over dense similarity is therefore real but small, and on most single datasets its interval includes zero (Fig.~\ref{fig:forest}). The reference configuration (raw features, 200 trees of depth 5) is worse than dense similarity alone: in pooled cross-validation the paired difference is -0.06 [-0.09, -0.04]. The two changes that helped were training on within-query deviations and using lower capacity. The selection chose a centred model for all eleven held-out datasets (a shallow tree ensemble six times, ridge regression five times).
@@ -478,14 +474,14 @@ Table~\ref{tab:main} shows the held-out results. MPUP, selected by nested leave-
     \end{tabular}
 \end{table}
 
-\paragraph{Training without LLM labels} A reference-configuration predictor trained only on the RAGBench annotation label, with no label from the target datasets, reaches a macro-average $\rho$ of 0.239. This is above BM25 (0.117) on nine of eleven datasets and below dense similarity (0.289). Annotation labels are cheap, but on their own they do not give a better ranking than a dense retriever.
+\paragraph{Training without LLM labels} The reference-configuration predictor trained only on the RAGBench annotation label, with no label from the target datasets, reaches a macro-average $\rho$ of 0.239. This is above BM25 (0.117) on nine of eleven datasets and below dense similarity (0.289). Annotation labels are cheap, but on their own they do not give a better ranking than a dense retriever.
 
 \paragraph{Another LLM $M$} The same pipeline was run earlier with Llama-3.2-3B-Instruct in 4-bit precision through MLX on Apple Silicon (same questions and candidates, 719 held-out queries). The macro-average $\rho$ was 0.286 for MPUP, 0.256 for dense similarity, 0.110 for BM25, and 0.211 for the reference configuration. The paired gain over dense similarity was +0.02 [+0.00, +0.05], and the annotation-trained predictor reached 0.194. The ordering of the methods is the same as with Qwen2.5-7B-Instruct, and the absolute values are lower. The two runs differ in the model, the quantization, and the hardware at the same time, so the difference between them cannot be attributed to one of these.
 
 \paragraph{Fresh questions with a frozen configuration} The configuration grid was designed after looking at the first sample of questions, so the nested score above is slightly optimistic. As a cleaner check, we drew a second sample of 100 questions per dataset with another seed (390 for RAGBench) and removed the questions already in the first sample (78 of the 100 Bamboogle questions, 0 to 8 in the other datasets). The configuration, shallow gradient-boosted trees on within-query deviations (100 trees, depth 2), was fixed beforehand, fitted on the first sample of the eleven datasets with true utility, and scored on the 693 rankable fresh questions without any selection. The macro-average $\rho$ is 0.31, against 0.28 for dense similarity, 0.15 for BM25, and 0.19 for the reference configuration. The paired gain over dense similarity is +0.05 [+0.03, +0.08], over BM25 +0.16 [+0.12, +0.20], and over the reference configuration +0.11 [+0.08, +0.15]. The ordering and the size of the gain are the same as in the nested estimate. This check uses the same datasets, so it does not test transfer to new datasets, and Bamboogle contributes only 6 fresh questions.
 
 \subsection{Cost}
-Table~\ref{tab:memory} gives the peak GPU memory of the full pipeline (generation, labelling, probing, and NLI), measured on the datasets with the longest contexts (40 questions from MuSiQue and HotpotQA, batch size 32). Labelling and feature extraction for all twelve datasets (9,554 query--passage pairs, 7,997 of them labelled with the true utility) took 27 minutes in bfloat16 on one GPU, about 0.17 s per pair. The evaluation itself runs on the CPU. Over the whole extraction run for the second sample of questions (all twelve datasets), the peak in bfloat16 was 22.3 GiB. We did not measure the 4-bit setting end to end or the behaviour on a card with 8 GB of memory.
+Table~\ref{tab:memory} gives the peak GPU memory of the full pipeline (generation, labelling, probing, and NLI), measured on the datasets with the longest contexts (40 questions from MuSiQue and HotpotQA, batch size 32). Labelling and feature extraction for all twelve datasets (9,554 query--passage pairs, 7,997 of them labelled with the true utility) took 27 minutes in bfloat16 on one GPU, about 0.17 s per pair. The evaluation itself runs on the CPU. Over the whole extraction run for the second sample of questions (all twelve datasets), the peak in bfloat16 was 22.3 GiB. The 4-bit setting was not measured end to end, and neither was the behaviour on a card with 8 GB of memory.
 
 \begin{table}[htbp]
     \centering
@@ -503,10 +499,10 @@ Table~\ref{tab:memory} gives the peak GPU memory of the full pipeline (generatio
 \end{table}
 
 \subsection{Limitations}
-The results use one source LLM per run and 100 questions per dataset (390 for RAGBench). The main estimate uses one sample of questions, and the second sample checks it only for a frozen configuration on the same datasets, so the intervals reflect the variation among questions, not among models. The true utility is defined by the same LLM $M$ that produces the D5 features, so we have not tested whether a predictor trained with one source LLM ranks passages well for a different target LLM. We also did not measure the answer accuracy when the top-$m$ passages of MPUP are placed in the prompt; we evaluate the quality of the ranking only. The extraction time above includes the labelling with the true utility; the latency of selection alone (one generation per query, then probing, NLI, and the regressor per passage) was not measured. The probing prompt (passage, then query) is truncated at 512 tokens from the right, so for 35 of the 9,554 pairs (0.37\%) the query is cut off and their D5 features are computed without it. The candidate sets are small (4 to 20 passages), and in the datasets without provided passages they are the top five of BM25, which limits how much any reranker can change.
+The results use one source LLM per run and 100 questions per dataset (390 for RAGBench). The main estimate uses one sample of questions, and the second sample checks it only for a frozen configuration on the same datasets, so the intervals reflect the variation among questions, not among models. The true utility is defined by the same LLM $M$ that produces the D5 features, so we have not tested whether a predictor trained with one source LLM ranks passages well for a different target LLM. The answer accuracy when the top-$m$ passages of MPUP are placed in the prompt was also not measured; only the quality of the ranking is evaluated. The extraction time above includes the labelling with the true utility; the latency of selection alone (one generation per query, then probing, NLI, and the regressor per passage) was not measured. The probing prompt (passage, then query) is truncated at 512 tokens from the right, so for 35 of the 9,554 pairs (0.37\%) the query is cut off and their D5 features are computed without it. The candidate sets are small (4 to 20 passages), and in the datasets without provided passages they are the top five of BM25, which limits how much any reranker can change.
 
 \section{Conclusion}
-We presented MPUP, a predictor of the utility of a retrieved passage for an LLM that combines 14 inexpensive features and does not fine-tune the target model. Across eleven datasets labelled with the true utility, a shallow predictor trained on within-query deviations ranks passages better than BM25 and slightly better than dense similarity, while the predictor first specified is worse than dense similarity alone. Most of the signal comes from the retriever features, and the LLM-based features add a small amount. The pipeline fits on one GPU, with a peak of 21--22 GiB in bfloat16 and about 7 GiB in 4-bit precision on a small sample. The next steps are to test transfer between source and target LLMs, to measure answer accuracy with the selected passages, and to evaluate on datasets that are not in the pool.
+This paper presented MPUP, a predictor of the utility of a retrieved passage for an LLM that combines 14 inexpensive features and does not fine-tune the target model. Across eleven datasets labelled with the true utility, a shallow predictor trained on within-query deviations ranks passages better than BM25 and slightly better than dense similarity, while the predictor first specified is worse than dense similarity alone. Most of the signal comes from the retriever features, and the LLM-based features add a small amount. The pipeline fits on one GPU, with a peak of 21--22 GiB in bfloat16 and about 7 GiB in 4-bit precision on a small sample. The next steps are to test transfer between source and target LLMs, to measure answer accuracy with the selected passages, and to evaluate on datasets that are not in the pool.
 
 
 \bibliographystyle{IEEEtran}
