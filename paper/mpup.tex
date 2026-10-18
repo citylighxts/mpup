@@ -302,25 +302,38 @@ are written as numbered context before the query.
 
 \section{Experimental Setup}
 \subsection{Datasets}
-Table~\ref{tab:datasets} lists the dataset sources that are implemented in
-the MPUP code base. Only the RAGBench HotpotQA subset is used for the
-experiments in this paper. The other three sources have working
-loaders, but they are not evaluated yet.
+Table~\ref{tab:datasets} lists the twelve datasets used in the experiments. Eleven of them have
+gold answers, so the utility of every query-passage pair is computed with Eq.~(1). RAGBench
+has no gold answer and carries the sentence-annotation label of Eq.~(5), so it is never pooled
+with the other eleven. For each dataset with gold answers, 100 questions are sampled with a
+fixed seed after removing yes/no questions (HotpotQA, 2WikiMultiHopQA) and questions whose text
+occurs more than once with different answers (PopQA). When a dataset provides no passages, the
+candidates are the top five passages by BM25 over the English Wikipedia corpus of 21,015,324
+passages of 100 words [Karpukhin et al., 2020]. HotpotQA, 2WikiMultiHopQA, and MuSiQue use all
+the paragraphs they provide.
 
 \begin{table*}[htbp]
     \centering
-    \caption{Dataset sources implemented in MPUP}
+    \caption{Datasets used in MPUP}
     \label{tab:datasets}
     \footnotesize
     \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
     \begin{tabularx}{\textwidth}{YYYYY}
         \toprule
-        \textbf{Dataset} & \textbf{Source (Hugging Face)} & \textbf{Candidate passages per query} & \textbf{Utility label} & \textbf{Status} \\
+        \textbf{Dataset} & \textbf{Source and split (size)} & \textbf{Candidate passages per question} & \textbf{Utility label} & \textbf{Questions / pairs used} \\
         \midrule
-        RAGBench, HotpotQA subset [Friel et al., 2024] & \texttt{galileo-ai/ragbench}, config \texttt{hotpotqa} & Four documents for 388 of the 390 test questions; 100 questions (400 query--passage pairs) are used & Fraction of sentences marked as used (Eq.~5) & Used in experiments \\
-        Natural Questions [Kwiatkowski et al., 2019] & \texttt{google-research-datasets/\allowbreak natural\_questions} & Long-answer candidates of the Wikipedia page & Gold short answers, utility from Eq.~(1) & Loader only \\
-        MS MARCO v2.1 [Bajaj et al., 2016] & \texttt{microsoft/ms\_marco}, config \texttt{v2.1} & Ten passages, with the selected ones marked & Gold answers, utility from Eq.~(1) & Loader only \\
-        TriviaQA, unfiltered [Joshi et al., 2017] & \texttt{mandarjoshi/trivia\_qa}, config \texttt{unfiltered} & Wikipedia and web evidence pages & Gold answer aliases, utility from Eq.~(1) & Loader only \\
+        RAGBench, HotpotQA subset [Friel et al., 2024] & \texttt{galileo-ai/ragbench}, config \texttt{hotpotqa}, test (390) & Provided: four documents & Sentence annotation (Eq.~5) & 390 / 1,557 \\
+        Natural Questions, open [Kwiatkowski et al., 2019] & FlashRAG \texttt{nq}, test (3,610) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        TriviaQA, unfiltered [Joshi et al., 2017] & FlashRAG \texttt{triviaqa}, test (11,313) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        WebQuestions [Berant et al., 2013] & FlashRAG \texttt{web\_questions}, test (2,032) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        EntityQuestions [Sciavolino et al., 2021] & Authors' release, test (22,075) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        PopQA [Mallen et al., 2023] & FlashRAG \texttt{popqa}, test (14,267; 12,187 after duplicates) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        SQuAD [Rajpurkar et al., 2016] & FlashRAG \texttt{squad}, dev (10,570) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        AmbigQA [Min et al., 2020] & FlashRAG \texttt{ambig\_qa}, dev (2,002) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        Bamboogle [Press et al., 2023] & FlashRAG \texttt{bamboogle}, test (125) & Top five by BM25 & Eq.~(1) & 100 / 500 \\
+        HotpotQA, distractor [Yang et al., 2018] & \texttt{hotpotqa/hotpot\_qa}, validation (7,405; 6,947 without yes/no) & Provided: ten paragraphs & Eq.~(1) & 100 / 1,000 \\
+        2WikiMultiHopQA [Ho et al., 2020] & FlashRAG \texttt{2wikimultihopqa}, dev (12,576; 11,268 without yes/no) & Provided: ten paragraphs & Eq.~(1) & 100 / 1,000 \\
+        MuSiQue [Trivedi et al., 2022] & \texttt{dgslibisey/MuSiQue}, validation (2,417) & Provided: up to twenty paragraphs & Eq.~(1) & 100 / 1,997 \\
         \bottomrule
     \end{tabularx}
 \end{table*}
