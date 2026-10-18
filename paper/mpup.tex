@@ -416,7 +416,7 @@ The predictor is chosen from data, so its score is estimated with nested leave-o
 The LLM $M$ is Qwen2.5-7B-Instruct in bfloat16 on one NVIDIA RTX 6000 Ada GPU. It writes the hypothetical answer, produces the probing features, and acts as the source LLM that defines the true utility (greedy decoding, at most 32 new tokens, relaxed exact match). The dense feature and the dense baseline use multilingual-E5-large. The baselines are BM25 and dense cosine similarity used alone as ranking scores.
 
 \subsection{Results}
-Table~\ref{tab:main} shows the held-out results. MPUP, selected by nested leave-one-dataset-out, reaches a macro-average $\rho$ of 0.333, against 0.289 for dense similarity, 0.117 for BM25, and 0.227 for the reference configuration. Over all 747 held-out queries, the paired gain over BM25 is +0.20 [+0.16, +0.24] and over dense similarity +0.04 [+0.02, +0.06]. The gain over dense similarity is therefore real but small, and on most single datasets its interval includes zero. The reference configuration (raw features, 200 trees of depth 5) is worse than dense similarity alone: in pooled cross-validation the paired difference is -0.06 [-0.09, -0.04]. The two changes that helped were training on within-query deviations and using lower capacity. The selection chose a centred model for all eleven held-out datasets (a shallow tree ensemble six times, ridge regression five times).
+Table~\ref{tab:main} shows the held-out results. MPUP, selected by nested leave-one-dataset-out, reaches a macro-average $\rho$ of 0.333, against 0.289 for dense similarity, 0.117 for BM25, and 0.227 for the reference configuration. Over all 747 held-out queries, the paired gain over BM25 is +0.20 [+0.16, +0.24] and over dense similarity +0.04 [+0.02, +0.06]. The gain over dense similarity is therefore real but small, and on most single datasets its interval includes zero (Fig.~\ref{fig:forest}). The reference configuration (raw features, 200 trees of depth 5) is worse than dense similarity alone: in pooled cross-validation the paired difference is -0.06 [-0.09, -0.04]. The two changes that helped were training on within-query deviations and using lower capacity. The selection chose a centred model for all eleven held-out datasets (a shallow tree ensemble six times, ridge regression five times).
 
 \begin{table*}[htbp]
     \centering
@@ -443,6 +443,13 @@ Table~\ref{tab:main} shows the held-out results. MPUP, selected by nested leave-
         \bottomrule
     \end{tabular}
 \end{table*}
+
+\begin{figure}[htbp]
+    \centering
+    \input{fig_forest.tex}
+    \caption{Paired difference in within-query Spearman $\rho$ between MPUP and dense similarity on each held-out dataset (nested leave-one-dataset-out, Qwen2.5-7B-Instruct), with 95\% bootstrap intervals over queries. Filled markers: the interval excludes zero (MuSiQue, SQuAD); open markers: it includes zero. The last row, the diamond, is the difference over all 747 held-out queries together.}
+    \label{fig:forest}
+\end{figure}
 
 \paragraph{Feature groups} Table~\ref{tab:ablation} shows the change in $\rho$ when one group is removed and the model is retrained, paired over queries. The retriever features (D1) matter most. With the selected configuration, the LLM probing group (D5) adds +0.02 [+0.00, +0.04] and the hypothetical-answer overlap (D3) adds +0.01 [+0.00, +0.03]. Document quality (D2) and NLI (D4) add nothing measurable. Most of the signal therefore comes from the retriever features, and each LLM-based group adds at most a few hundredths of $\rho$. The table is descriptive, because the configuration was selected on the same datasets. The source-credibility feature is constant (0.5) in all datasets, so effectively 13 features carry information.
 
