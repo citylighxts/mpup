@@ -25,7 +25,7 @@ class MPUPPipeline:
         prober: Optional[LogitProber] = None,
         calibrator: Optional[LinearCalibrator] = None,
         top_m: int = 5,
-        utility_threshold: float = 0.0,
+        utility_threshold: Optional[float] = None,
         hyde_generator=None,
         dense_retriever=None,
     ):
@@ -75,6 +75,11 @@ class MPUPPipeline:
         return ranked
 
     def build_rag_prompt(self, query: str, ranked_passages: list[RankedPassage]) -> str:
-        top = [r for r in ranked_passages if r.utility_score > self.utility_threshold][:self.top_m]
+        # No threshold by default: a query-centred predictor scores relative to the other candidates,
+        # so a threshold of 0 would drop the below-average half rather than the useless passages.
+        kept = ranked_passages
+        if self.utility_threshold is not None:
+            kept = [r for r in ranked_passages if r.utility_score > self.utility_threshold]
+        top = kept[:self.top_m]
         context = "\n\n".join(f"[{i+1}] {r.passage.text}" for i, r in enumerate(top))
         return f"Context:\n{context}\n\nQuery: {query}"

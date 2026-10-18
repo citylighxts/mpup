@@ -82,3 +82,17 @@ def test_pipeline_works_with_a_query_centred_predictor(tiny_feature_matrix, samp
     assert scores == sorted(scores, reverse=True) and len(ranked) == 3
     assert sum(scores) == pytest.approx(0.0 + sum(scores))  # finite
     assert all(np.isfinite(scores))
+
+
+def test_no_threshold_by_default_keeps_top_m_even_with_negative_scores(sample_passages):
+    ranked = [RankedPassage(passage=p, utility_score=s) for p, s in zip(sample_passages, (-0.1, -0.2, -0.3))]
+    pipeline = MPUPPipeline(predictor=MagicMock(), top_m=2)
+    prompt = pipeline.build_rag_prompt("query", ranked)
+    assert "[2]" in prompt and "[3]" not in prompt
+
+
+def test_explicit_threshold_drops_passages_at_or_below_it(sample_passages):
+    ranked = [RankedPassage(passage=p, utility_score=s) for p, s in zip(sample_passages, (0.3, 0.0, -0.3))]
+    pipeline = MPUPPipeline(predictor=MagicMock(), top_m=5, utility_threshold=0.0)
+    prompt = pipeline.build_rag_prompt("query", ranked)
+    assert "[1]" in prompt and "[2]" not in prompt

@@ -74,4 +74,4 @@ evaluation:
 # ── RAG Deployment (Notion doc Phase 6) ──────────────────────────────────────
 deployment:
   top_m: 5                # jumlah passage terpilih untuk RAG prompt
-  utility_threshold: 0.0  # buang passage dengan û_i ≤ threshold
+  utility_threshold: null # null = tanpa threshold (sesuai paper); angka = buang passage dengan û_i ≤ threshold

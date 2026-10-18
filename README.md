@@ -145,7 +145,8 @@ What this does and does not show:
 
 The deployable predictor is the configuration selected on all 11 datasets
 (`checkpoints/mpup_pooled`, not tracked). Its scores are *within-query* (better or worse than the
-average candidate), so `utility_threshold` then drops below-average candidates.
+average candidate), so no threshold is applied by default (`utility_threshold=None`, as in the
+paper); setting one would drop below-average candidates.
 
 ### Reproduce
 
