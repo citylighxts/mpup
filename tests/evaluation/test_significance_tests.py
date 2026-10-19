@@ -42,3 +42,11 @@ def test_p_from_interval_recovers_a_known_normal_case():
 def test_p_from_interval_is_large_when_the_interval_straddles_zero():
     from experiments.significance_tests import p_from_interval
     assert p_from_interval(0.01, -0.08, 0.10)["p"] > 0.5
+
+
+def test_p_from_interval_with_n_uses_the_t_distribution_and_is_more_conservative():
+    from experiments.significance_tests import p_from_interval
+    z_based = p_from_interval(0.1, 0.02, 0.18)["p"]
+    t_based = p_from_interval(0.1, 0.02, 0.18, n=20)["p"]
+    assert t_based > z_based
+    assert p_from_interval(0.1, 0.02, 0.18, n=100000)["p"] == pytest.approx(z_based, abs=1e-4)

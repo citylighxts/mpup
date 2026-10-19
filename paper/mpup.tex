@@ -411,26 +411,26 @@ Table~\ref{tab:main} shows the held-out results. MPUP, selected by nested leave-
 
 \begin{table*}[htbp]
     \centering
-    \caption{Within-query Spearman $\rho$ with the true utility on held-out datasets (nested leave-one-dataset-out, Qwen2.5-7B-Instruct, bfloat16). Last column: paired difference to dense similarity with its 95\% bootstrap interval. $^{\dagger}$Computed over all held-out queries, not as an average of the rows.}
+    \caption{Within-query Spearman $\rho$ with the true utility on held-out datasets (nested leave-one-dataset-out, Qwen2.5-7B-Instruct, bfloat16). Last column: paired difference to dense similarity with its 95\% bootstrap interval. $p$: two-sided, from the interval as in a paired $t$-test ($t$ with $n-1$ degrees of freedom), with the Holm-adjusted value in parentheses (eleven datasets); H$_0$: the mean difference is zero. $^{\dagger}$Computed over all held-out queries, not as an average of the rows; the pooled $p$ is one test and needs no adjustment.}
     \label{tab:main}
     \footnotesize
-    \begin{tabular}{lrrrrrr}
+    \begin{tabular}{lrrrrrrr}
         \toprule
-        \textbf{Held-out dataset} & \textbf{Queries} & \textbf{MPUP} & \textbf{Reference config.} & \textbf{Dense} & \textbf{BM25} & \textbf{MPUP $-$ dense} \\
+        \textbf{Held-out dataset} & \textbf{Queries} & \textbf{MPUP} & \textbf{Reference config.} & \textbf{Dense} & \textbf{BM25} & \textbf{MPUP $-$ dense} & \textbf{$p$ (Holm)} \\
         \midrule
-        2WikiMultiHopQA & 94 & 0.24 & 0.16 & 0.21 & 0.08 & +0.04 [-0.00, +0.08] \\
-        AmbigQA & 61 & 0.43 & 0.32 & 0.42 & 0.08 & +0.01 [-0.08, +0.10] \\
-        Bamboogle & 48 & 0.39 & 0.20 & 0.28 & 0.10 & +0.11 [-0.00, +0.23] \\
-        EntityQuestions & 65 & 0.32 & 0.24 & 0.27 & 0.29 & +0.05 [-0.03, +0.15] \\
-        HotpotQA & 90 & 0.27 & 0.14 & 0.28 & 0.07 & -0.00 [-0.05, +0.05] \\
-        MuSiQue & 84 & 0.22 & 0.17 & 0.17 & 0.04 & +0.05 [+0.01, +0.09] \\
-        NQ & 56 & 0.44 & 0.26 & 0.35 & 0.03 & +0.09 [-0.00, +0.20] \\
-        PopQA & 44 & 0.56 & 0.37 & 0.51 & 0.13 & +0.05 [-0.04, +0.13] \\
-        SQuAD & 67 & 0.37 & 0.23 & 0.23 & 0.25 & +0.14 [+0.05, +0.24] \\
-        TriviaQA & 71 & 0.28 & 0.33 & 0.33 & 0.17 & -0.05 [-0.13, +0.02] \\
-        WebQuestions & 67 & 0.14 & 0.07 & 0.13 & 0.05 & +0.01 [-0.11, +0.13] \\
+        2WikiMultiHopQA & 94 & 0.24 & 0.16 & 0.21 & 0.08 & +0.04 [-0.00, +0.08] & 0.064 (0.575) \\
+        AmbigQA & 61 & 0.43 & 0.32 & 0.42 & 0.08 & +0.01 [-0.08, +0.10] & 0.817 (1.000) \\
+        Bamboogle & 48 & 0.39 & 0.20 & 0.28 & 0.10 & +0.11 [-0.00, +0.23] & 0.069 (0.575) \\
+        EntityQuestions & 65 & 0.32 & 0.24 & 0.27 & 0.29 & +0.05 [-0.03, +0.15] & 0.293 (1.000) \\
+        HotpotQA & 90 & 0.27 & 0.14 & 0.28 & 0.07 & -0.00 [-0.05, +0.05] & 0.902 (1.000) \\
+        MuSiQue & 84 & 0.22 & 0.17 & 0.17 & 0.04 & +0.05 [+0.01, +0.09] & 0.014 (0.142) \\
+        NQ & 56 & 0.44 & 0.26 & 0.35 & 0.03 & +0.09 [-0.00, +0.20] & 0.071 (0.575) \\
+        PopQA & 44 & 0.56 & 0.37 & 0.51 & 0.13 & +0.05 [-0.04, +0.13] & 0.272 (1.000) \\
+        SQuAD & 67 & 0.37 & 0.23 & 0.23 & 0.25 & +0.14 [+0.05, +0.24] & 0.005 (0.058) \\
+        TriviaQA & 71 & 0.28 & 0.33 & 0.33 & 0.17 & -0.05 [-0.13, +0.02] & 0.190 (1.000) \\
+        WebQuestions & 67 & 0.14 & 0.07 & 0.13 & 0.05 & +0.01 [-0.11, +0.13] & 0.908 (1.000) \\
         \midrule
-        Macro mean & 747 & 0.333 & 0.227 & 0.289 & 0.117 & +0.04 [+0.02, +0.06]$^{\dagger}$ \\
+        Macro mean & 747 & 0.333 & 0.227 & 0.289 & 0.117 & +0.04 [+0.02, +0.06]$^{\dagger}$ & 0.001$^{\dagger}$ \\
         \bottomrule
     \end{tabular}
 \end{table*}
@@ -442,24 +442,24 @@ Table~\ref{tab:main} shows the held-out results. MPUP, selected by nested leave-
     \label{fig:forest}
 \end{figure}
 
-\paragraph{Significance tests} Whether MPUP orders passages better than dense similarity is tested as a hypothesis. H$_0$: the mean within-query difference in $\rho$ between MPUP and dense similarity is zero. H$_1$: it is not zero (two-sided, $\alpha = 0.05$). Queries are the units, and the differences are paired. Per-query values are bounded and not normally distributed, so the $p$-values are recovered from the paired bootstrap intervals of Table~\ref{tab:main} through a normal approximation: $z = \hat{\delta}/\mathrm{SE}$, with $\mathrm{SE}$ the interval width divided by 3.92. The intervals are close to symmetric (asymmetry at most 0.08), and against exact sign-flip permutation tests on the earlier Llama run the approximation differs by at most 0.04 in $p$. Holm's correction covers the eleven single-dataset tests, and the pooled test is one test. Over all 747 held-out queries, H$_0$ is rejected ($p = 0.001$, standardised effect $d_z = 0.12$). Per dataset, H$_0$ is rejected after correction only for SQuAD ($p = 0.004$, Holm 0.043); MuSiQue ($p = 0.012$, Holm 0.12) does not survive it, and the other nine datasets give no evidence of a difference. On the fresh questions with the frozen configuration, H$_0$ is rejected as well ($p < 0.001$, 693 queries). Rejecting H$_0$ means that a difference of zero is unlikely, not that the difference is large: the mean gain is +0.04 in $\rho$ and the standardised effect is small. Datasets of 44 to 94 queries each detect only a difference of about 0.06 to 0.17 in $\rho$ at 80\% power, so failing to reject H$_0$ there does not show equal performance.
+\paragraph{Significance tests} Whether MPUP orders passages better than dense similarity is tested as a hypothesis. H$_0$: the mean within-query difference in $\rho$ between MPUP and dense similarity is zero. H$_1$: it is not zero (two-sided, $\alpha = 0.05$). Queries are the units, and the differences are paired. Per-query values are bounded and not normally distributed, so the $p$-values are recovered from the paired bootstrap intervals of Table~\ref{tab:main} as in a paired $t$-test: $t = \hat{\delta}/\mathrm{SE}$ with $n-1$ degrees of freedom, where $\mathrm{SE}$ is the interval width divided by 3.92. The intervals are close to symmetric (asymmetry at most 0.08), and against exact sign-flip permutation tests on the earlier Llama run the approximation differs by at most 0.03 in $p$. Holm's correction covers the eleven single-dataset tests, and the pooled test is one test (the $p$-values are listed in Tables~\ref{tab:main} and~\ref{tab:ablation}). Over all 747 held-out queries, H$_0$ is rejected ($p = 0.001$, standardised effect $d_z = 0.12$). Per dataset, H$_0$ is not rejected after correction in any dataset: SQuAD ($p = 0.005$, Holm 0.058) and MuSiQue ($p = 0.014$, Holm 0.14) come closest, and the other nine datasets give no evidence of a difference. On the fresh questions with the frozen configuration, H$_0$ is rejected as well ($p < 0.001$, 693 queries). Rejecting H$_0$ means that a difference of zero is unlikely, not that the difference is large: the mean gain is +0.04 in $\rho$ and the standardised effect is small. Datasets of 44 to 94 queries each detect only a difference of about 0.06 to 0.17 in $\rho$ at 80\% power, so failing to reject H$_0$ there does not show equal performance.
 
-\paragraph{Feature groups} Table~\ref{tab:ablation} shows the change in $\rho$ when one group is removed and the model is retrained, paired over queries. Retriever features (D1) matter most. With the selected configuration, the LLM probing group (D5) adds +0.02 [+0.00, +0.04] and the hypothetical-answer overlap (D3) adds +0.01 [+0.00, +0.03]. Document quality (D2) and NLI (D4) add nothing measurable. Removing both groups together costs nothing either: retrained on D1, D3, and D5 only (selected configuration fixed, leave-one-dataset-out), the predictor reaches $\rho$ = 0.336 against 0.337 with all 14 features, and 0.335 against 0.336 on the second sample of questions. Retriever features alone (D1) only match dense similarity (paired difference +0.00 in both samples), so the gain over dense similarity comes from D3 and D5, and dropping either of them shrinks it. Which of the two matters more differs between the two samples. Most of the signal therefore comes from the retriever features, and each LLM-based group adds at most a few hundredths of $\rho$. Because the configuration was selected on the same datasets, the table is descriptive. Source credibility is constant (0.5) in all datasets, so effectively 13 features carry information.
+\paragraph{Feature groups} Table~\ref{tab:ablation} shows the change in $\rho$ when one group is removed and the model is retrained, paired over queries. Retriever features (D1) matter most. With the selected configuration, the LLM probing group (D5) adds +0.02 [+0.00, +0.04] and the hypothetical-answer overlap (D3) adds +0.01 [+0.00, +0.03], although neither survives the Holm correction over five groups (adjusted $p$ = 0.065 and 0.122). Document quality (D2) and NLI (D4) add nothing measurable. Removing both groups together costs nothing either: retrained on D1, D3, and D5 only (selected configuration fixed, leave-one-dataset-out), the predictor reaches $\rho$ = 0.336 against 0.337 with all 14 features, and 0.335 against 0.336 on the second sample of questions. Retriever features alone (D1) only match dense similarity (paired difference +0.00 in both samples), so the gain over dense similarity comes from D3 and D5, and dropping either of them shrinks it. Which of the two matters more differs between the two samples. Most of the signal therefore comes from the retriever features, and each LLM-based group adds at most a few hundredths of $\rho$. Because the configuration was selected on the same datasets, the table is descriptive. Source credibility is constant (0.5) in all datasets, so effectively 13 features carry information.
 
 \begin{table}[htbp]
     \centering
-    \caption{Change in within-query Spearman $\rho$ when one feature group is removed and the model is retrained (paired over queries; positive means the group helps). Each cell is a mean difference with its 95\% bootstrap interval, not a $p$-value; an interval that excludes zero indicates a reliable effect. Pooled 5-fold, 5-repeat cross-validation over queries.}
+    \caption{Change in within-query Spearman $\rho$ when one feature group is removed and the model is retrained (paired over queries; positive means the group helps). Each cell is a mean difference with its 95\% bootstrap interval; an interval that excludes zero indicates a reliable effect. $p_{\mathrm{H}}$: two-sided $p$-value from the interval (paired $t$-test statistic), Holm-adjusted over the five groups of a column. Pooled 5-fold, 5-repeat cross-validation over queries.}
     \label{tab:ablation}
     \footnotesize
     \begin{tabular}{lll}
         \toprule
         \textbf{Group} & \textbf{Selected config.} & \textbf{Reference config.} \\
         \midrule
-        D1 & +0.06 [+0.03, +0.09] & +0.10 [+0.07, +0.13] \\
-        D2 & +0.00 [-0.00, +0.00] & -0.00 [-0.01, +0.01] \\
-        D3 & +0.01 [+0.00, +0.03] & -0.01 [-0.02, -0.00] \\
-        D4 & -0.00 [-0.00, +0.00] & -0.01 [-0.02, +0.01] \\
-        D5 & +0.02 [+0.00, +0.04] & +0.02 [+0.00, +0.04] \\
+        \shortstack[l]{D1\\ \strut} & \shortstack{+0.06 [+0.03, +0.09]\\ $p_{\mathrm{H}}$ $<$ 0.001} & \shortstack{+0.10 [+0.07, +0.13]\\ $p_{\mathrm{H}}$ $<$ 0.001} \\
+        \shortstack[l]{D2\\ \strut} & \shortstack{+0.00 [-0.00, +0.00]\\ $p_{\mathrm{H}}$ = 0.808} & \shortstack{-0.00 [-0.01, +0.01]\\ $p_{\mathrm{H}}$ = 0.883} \\
+        \shortstack[l]{D3\\ \strut} & \shortstack{+0.01 [+0.00, +0.03]\\ $p_{\mathrm{H}}$ = 0.122} & \shortstack{-0.01 [-0.02, -0.00]\\ $p_{\mathrm{H}}$ = 0.094} \\
+        \shortstack[l]{D4\\ \strut} & \shortstack{-0.00 [-0.00, +0.00]\\ $p_{\mathrm{H}}$ = 0.821} & \shortstack{-0.01 [-0.02, +0.01]\\ $p_{\mathrm{H}}$ = 0.444} \\
+        \shortstack[l]{D5\\ \strut} & \shortstack{+0.02 [+0.00, +0.04]\\ $p_{\mathrm{H}}$ = 0.065} & \shortstack{+0.02 [+0.00, +0.04]\\ $p_{\mathrm{H}}$ = 0.076} \\
         \bottomrule
     \end{tabular}
 \end{table}

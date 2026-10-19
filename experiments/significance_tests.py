@@ -25,9 +25,11 @@ how small a difference a dataset of this size could have shown.
 
 Second mode (`--from-ci`): when the per-query values are not at hand (the Qwen features live on the GPU machine,
 only the bootstrap intervals of Table IV are stored in the results JSON), the p-value is recovered from the
-interval itself with the normal approximation of Altman and Bland (BMJ 2011): SE = (hi - lo) / (2 * 1.96),
-z = estimate / SE, p = 2 * (1 - Phi(|z|)). It is accurate when the interval is roughly symmetric, which is
-checked and reported; `validate_against_exact` compares it with the exact permutation p-values.
+interval itself (Altman and Bland, BMJ 2011): SE = (hi - lo) / (2 * 1.96), t = estimate / SE, and p is read
+from a t distribution with n - 1 degrees of freedom, which is what a paired t-test does with the per-query
+differences (n = number of queries; without n it falls back to the normal distribution). It is accurate when the
+interval is roughly symmetric, which is checked and reported; `validate_against_exact` compares it with the
+exact permutation p-values.
 """
 from __future__ import annotations
 
@@ -131,13 +133,17 @@ def run(data_dir: Path, results: Path, n_perm: int = 200_000, seed: int = 0) -> 
             "selected": selected, "n_perm": n_perm, "seed": seed}
 
 
-def p_from_interval(estimate: float, lo: float, hi: float) -> dict:
-    """Two-sided p-value and standard error recovered from an estimate and its 95% interval (normal approximation)."""
+def p_from_interval(estimate: float, lo: float, hi: float, n: int | None = None) -> dict:
+    """Two-sided p-value and standard error recovered from an estimate and its 95% interval.
+
+    With `n` (the number of paired queries) the statistic is referred to a t distribution with n - 1 degrees of
+    freedom, as in a paired t-test; without it, to the normal distribution.
+    """
     se = (hi - lo) / (2 * Z_ALPHA)
     z = estimate / se
     asymmetry = abs((hi - estimate) - (estimate - lo)) / (hi - lo)  # 0 = symmetric
     return {"estimate": estimate, "lo": lo, "hi": hi, "se": se, "z": z,
-            "p": float(2 * stats.norm.sf(abs(z))), "asymmetry": asymmetry}
+            "p": float(2 * (stats.t.sf(abs(z), n - 1) if n else stats.norm.sf(abs(z)))), "asymmetry": asymmetry}
 
 
 def from_results(results: Path, fresh: Path | None = None) -> dict:
@@ -146,19 +152,27 @@ def from_results(results: Path, fresh: Path | None = None) -> dict:
     rows = {}
     for name, d in nested["per_dataset"].items():
         est, lo, hi = d["paired_vs"]["dense"]["spearman"]
-        rows[name] = {"n": d["n_queries"], **p_from_interval(est, lo, hi)}
+        rows[name] = {"n": d["n_queries"], **p_from_interval(est, lo, hi, d["n_queries"])}
         rows[name]["cohen_dz"] = est / (rows[name]["se"] * np.sqrt(d["n_queries"]))
     for key, adj in zip(("p_holm",), (holm([r["p"] for r in rows.values()]),)):
         for r, a in zip(rows.values(), adj):
             r[key] = a
     est, lo, hi = nested["pooled_paired_vs"]["dense"]["spearman"]
-    pooled = {"n": nested["n_queries"], **p_from_interval(est, lo, hi)}
+    pooled = {"n": nested["n_queries"], **p_from_interval(est, lo, hi, nested["n_queries"])}
     pooled["cohen_dz"] = est / (pooled["se"] * np.sqrt(pooled["n"]))
-    out = {"per_dataset": rows, "pooled": pooled, "method": "normal approximation from the 95% bootstrap interval"}
+    out = {"per_dataset": rows, "pooled": pooled, "method": "paired t-test statistic from the 95% bootstrap interval (t with n-1 df)"}
+    full = json.loads(results.read_text())
+    ablation = {}  # Table V: one family of five groups per configuration, Holm within the column
+    for label, paired in (("selected", full["ablation_selected"]["paired_vs"]), ("reference", full["pooled_cv"]["paired_vs"])):
+        cells = {g: p_from_interval(*paired[f"drop_{g}"]["spearman"], nested["n_queries"]) for g in ("d1", "d2", "d3", "d4", "d5")}
+        for g, a_ in zip(cells, holm([c["p"] for c in cells.values()])):
+            cells[g]["p_holm"] = a_
+        ablation[label] = cells
+    out["ablation"] = ablation
     if fresh is not None:
         f = json.loads(fresh.read_text())
         est, lo, hi = f["paired_mpup_vs"]["dense"]["spearman"]
-        out["fresh_questions"] = {"n": f["n_fresh_queries"], **p_from_interval(est, lo, hi)}
+        out["fresh_questions"] = {"n": f["n_fresh_queries"], **p_from_interval(est, lo, hi, f["n_fresh_queries"])}
     return out
 
 
