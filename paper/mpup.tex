@@ -10,6 +10,7 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{tikz}
+\usepackage{float}
 \usetikzlibrary{arrows.meta,fit}
 \setlength{\textfloatsep}{12pt plus 2pt minus 4pt}
 % Visible marker for numbers/statements that still need a measured value. Must be gone before submission.
@@ -138,7 +139,29 @@ Next, the trained regressor maps these features to a utility score, and an
 optional calibration step adjusts the scale of the score. Passages are ranked by the score, and the top passages are placed in the prompt
 of the target LLM. No fine-tuning of the target LLM is ever needed, and the question does not need to be answered twice for every passage.
 
-\begin{figure}[htbp]
+
+Passage utility measures whether a passage, given as evidence, improves
+the accuracy of an LLM compared with answering without any evidence~\cite{zhang2026}. Let $q$ be query, $d$ candidate passage, and $L$
+target LLM. Utility of $d$ for $L$ on query $q$ is the difference
+in generation accuracy~\cite{zhang2026}:
+
+\begin{equation}
+    u(d;L,q)
+    =
+    \operatorname{Acc}(L(q,d))
+    -
+    \operatorname{Acc}(L(q,\varnothing)).
+    \label{eq:utility}
+\end{equation}
+
+Where $L(q,\varnothing)$ is the answer of $L$ from its own memory alone,
+and $L(q,d)$ is the answer of $L$ when it reads $d$.
+$\operatorname{Acc}(\cdot)$ is a standard correctness metric. Passage
+is useful only if reading it improves the model, which means $u>0$.
+Zero utility means the passage adds nothing, and a negative value
+means it makes the answer worse.
+
+\begin{figure}[H]
     \centering
     \resizebox{\columnwidth}{!}{%
     \begin{tikzpicture}[
@@ -195,27 +218,6 @@ of the target LLM. No fine-tuning of the target LLM is ever needed, and the ques
     one shared model. Dashed: training only.}
     \label{fig:mpup_overview}
 \end{figure}
-
-Passage utility measures whether a passage, given as evidence, improves
-the accuracy of an LLM compared with answering without any evidence~\cite{zhang2026}. Let $q$ be query, $d$ candidate passage, and $L$
-target LLM. Utility of $d$ for $L$ on query $q$ is the difference
-in generation accuracy~\cite{zhang2026}:
-
-\begin{equation}
-    u(d;L,q)
-    =
-    \operatorname{Acc}(L(q,d))
-    -
-    \operatorname{Acc}(L(q,\varnothing)).
-    \label{eq:utility}
-\end{equation}
-
-Where $L(q,\varnothing)$ is the answer of $L$ from its own memory alone,
-and $L(q,d)$ is the answer of $L$ when it reads $d$.
-$\operatorname{Acc}(\cdot)$ is a standard correctness metric. Passage
-is useful only if reading it improves the model, which means $u>0$.
-Zero utility means the passage adds nothing, and a negative value
-means it makes the answer worse.
 
 If we test a pool of candidate passages $\mathcal{C}$ in this way and
 keep only the passages that help $L$, we obtain the gold utilitarian
