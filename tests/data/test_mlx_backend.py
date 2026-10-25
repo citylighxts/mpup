@@ -52,3 +52,36 @@ def test_empty_input_makes_no_model_call():
     llm, calls = _llm()
     assert llm.generate([]) == []
     assert calls == []
+
+
+# ----------------------------------------------------------------- answer_logprobs
+
+import numpy as np
+import pytest
+
+mx = pytest.importorskip("mlx.core")
+
+
+class _AFavouringModel:
+    """Always puts most of its mass on token 'A' (id 65), whatever the context."""
+
+    def __call__(self, x):
+        logits = np.zeros((1, x.shape[1], 128), dtype=np.float32)
+        logits[..., ord("A")] = 6.0
+        return mx.array(logits)
+
+
+def _scoring_llm():
+    return MLXLLM(_loaded=(_AFavouringModel(), FakeTokenizer()), _batch_generate=lambda *a, **k: None)
+
+
+def test_answer_logprobs_prefers_the_likely_answer():
+    lp = _scoring_llm().answer_logprobs(["q1", "q1"], ["AAA", "BBB"])
+    assert lp[0] > lp[1]
+    assert lp[0] == pytest.approx(float(np.log(np.exp(6) / (np.exp(6) + 127))), rel=1e-4)
+
+
+def test_answer_logprobs_is_the_mean_over_answer_tokens_and_keeps_order():
+    lp = _scoring_llm().answer_logprobs(["p", "p", "p"], ["A", "AB", "B"])
+    assert lp[0] > lp[1] > lp[2]
+    assert lp[1] == pytest.approx((lp[0] + lp[2]) / 2, rel=1e-4)

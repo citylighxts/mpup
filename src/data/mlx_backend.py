@@ -59,3 +59,17 @@ class MLXLLM:
             for i, text in zip(idx, response.texts):
                 out[i] = text.strip()
         return out
+
+    def answer_logprobs(self, prompts: list[str], answers: list[str]) -> list[float]:
+        """Mean token log-probability of each `answer` as the reply to the matching prompt (teacher forcing)."""
+        import mlx.core as mx
+
+        out = []
+        for prompt, answer in zip(prompts, answers):
+            context = self._encode(prompt)
+            reply = self.tokenizer.encode(answer, add_special_tokens=False)
+            logits = self.model(mx.array([context + reply]))[0, len(context) - 1 : -1].astype(mx.float32)
+            logp = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+            picked = mx.take_along_axis(logp, mx.array(reply)[:, None], axis=-1)
+            out.append(float(mx.mean(picked).item()))
+        return out
