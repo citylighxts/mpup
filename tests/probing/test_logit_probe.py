@@ -105,3 +105,42 @@ def test_mlx_prober_truncates_long_prompts_but_keeps_the_end():
     prober, model = _prober()
     prober._entropy("x" * 2000, max_length=64)
     assert model.lengths[-1] == 64
+
+
+# ------------------------------------------------------ MLXProber hidden states
+
+
+def _tiny_qwen(hidden=16, layers=2):
+    from mlx_lm.models.qwen2 import Model, ModelArgs
+
+    mx.random.seed(0)
+    args = ModelArgs(model_type="qwen2", hidden_size=hidden, num_hidden_layers=layers, intermediate_size=32,
+                     num_attention_heads=2, num_key_value_heads=2, rms_norm_eps=1e-6, vocab_size=16)
+    model = Model(args)
+    mx.eval(model.parameters())
+    return model
+
+
+def test_hidden_batch_shape():
+    prober, _ = _prober(_tiny_qwen())
+    H = prober.hidden_batch("what?", ["p1", "p2", "p3"], layers=(0, -1))
+    assert H.shape == (3, 2, 16) and H.dtype == np.float32
+
+
+def test_hidden_last_layer_equals_model_output():
+    model = _tiny_qwen()
+    prober, _ = _prober(model)
+    H = prober.hidden_batch("what?", ["some passage"], layers=(-1,))
+    tokens = _FakeTokenizer().encode("Context: some passage\nQuery: what?")
+    expected = np.array(model.model(mx.array([tokens]))[0, -1].astype(mx.float32))
+    assert np.allclose(H[0, 0], expected, atol=1e-5)
+
+
+def test_hidden_uses_same_truncation_as_entropy():
+    model = _tiny_qwen()
+    prober, _ = _prober(model)
+    tokens = _FakeTokenizer().encode("Context: " + "x" * 300 + "\nQuery: what?")
+    kept = tokens[:1] + tokens[-(64 - 1):]
+    expected = np.array(model.model(mx.array([kept]))[0, -1].astype(mx.float32))
+    H = prober.hidden_batch("what?", ["x" * 300], layers=(-1,), max_length=64)
+    assert np.allclose(H[0, 0], expected, atol=1e-5)

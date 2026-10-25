@@ -156,13 +156,16 @@ class MLXProber:
             from mlx_lm import load as mlx_load
             self._model, self._tokenizer = mlx_load(model_name)
 
-    def _entropy(self, prompt: str, max_length: int = 512) -> tuple[float, float]:
-        """(entropy in nats, perplexity = exp(entropy)) of the next-token distribution."""
-        mx = self._mx
+    def _tokens(self, prompt: str, max_length: int) -> list[int]:
         tokens = self._tokenizer.encode(prompt)
         if len(tokens) > max_length:
             tokens = tokens[:1] + tokens[-(max_length - 1):]  # keep BOS and the end, where the query is
-        x = mx.array([tokens])
+        return tokens
+
+    def _entropy(self, prompt: str, max_length: int = 512) -> tuple[float, float]:
+        """(entropy in nats, perplexity = exp(entropy)) of the next-token distribution."""
+        mx = self._mx
+        x = mx.array([self._tokens(prompt, max_length)])
         logits = self._model(x)
         last = logits[0, -1, :].astype(mx.float32)
         probs = mx.softmax(last)
@@ -190,6 +193,36 @@ class MLXProber:
             self._result(base, self._entropy(f"Context: {p}\nQuery: {query}", max_length))
             for p in passages
         ]
+
+
+    def hidden_batch(
+        self, query: str, passages: list[str], layers: tuple[int, ...] = (14, -1), max_length: int = 512
+    ) -> np.ndarray:
+        """Last-token hidden states of the probing prompt, shape (len(passages), len(layers), hidden_size).
+
+        Layer `i >= 0` is the residual stream after transformer block `i`; `-1` is the final, post-norm
+        state (what `model.model(x)` returns). The prompt and its truncation are those of `probe_batch`.
+        """
+        from mlx_lm.models.base import create_attention_mask
+
+        mx = self._mx
+        inner = self._model.model
+        wanted = set(layers)
+        out = np.zeros((len(passages), len(layers), inner.args.hidden_size), dtype=np.float32)
+        for row, p in enumerate(passages):
+            x = mx.array([self._tokens(f"Context: {p}\nQuery: {query}", max_length)])
+            h = inner.embed_tokens(x)
+            mask = create_attention_mask(h, None)
+            states = {}
+            for i, layer in enumerate(inner.layers):
+                h = layer(h, mask, None)
+                if i in wanted:
+                    states[i] = h[0, -1]
+            if -1 in wanted:
+                states[-1] = inner.norm(h)[0, -1]
+            for col, layer_index in enumerate(layers):
+                out[row, col] = np.array(states[layer_index].astype(mx.float32))
+        return out
 
 
 class MockProber:
