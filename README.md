@@ -166,6 +166,70 @@ feature extraction for all 12 datasets (9,554 pairs) took about 27 minutes in bf
 includes the labelling with the true utility. Selection-time latency, the 4-bit setting end to end
 and an 8 GB card were not measured.
 
+### Larger study and MPUP+ (hidden-state probe)
+
+700 questions per dataset (Bamboogle: all 125), top-20 BM25 candidates for the retrieved datasets,
+128,467 pairs labelled with Eq. 1 by Qwen2.5-7B-Instruct (bf16). Questions are split once by a hash
+of their id into development (70%) and test (30%); questions from the two earlier samples always go
+to development. MPUP+ adds two features to the 14: a ridge probe on M's hidden state (layer 21, last
+prompt token of the Eq. 1 prompt, centred within the query, out-of-fold inside training) and the
+score of the bge-reranker-v2-m3 cross-encoder. 24 variants were compared on development only
+([`results/big_dev.md`](results/big_dev.md)); the best, `gbr(500,d4)|u|ce|probe`, was scored once on
+the test questions ([`results/big_final.md`](results/big_final.md)), 1,641 rankable, 10 datasets:
+
+| Method | macro ρ | NDCG@10 | top-1 |
+|---|---|---|---|
+| **MPUP+** | **0.356** | 0.780 | 0.618 |
+| MPUP (14 features, paper config.) | 0.280 | 0.709 | 0.505 |
+| Cross-encoder alone | 0.260 | 0.697 | 0.490 |
+| Dense similarity alone | 0.226 | 0.659 | 0.459 |
+| BM25 alone | 0.106 | 0.557 | 0.356 |
+
+Paired over test queries: MPUP+ − dense +0.130 [+0.116, +0.144], − cross-encoder +0.095 [+0.083, +0.108],
+− MPUP +0.075 [+0.064, +0.086], all p < 1e-5 (sign-flip permutation); Holm-adjusted p ≤ 0.003 vs dense
+in every dataset. Trained without the tested dataset: 0.351. Labels + 14 features took 5.7 h (peak
+25.7 GiB); hidden states + cross-encoder 78 min.
+
+```bash
+python -m experiments.prepare_data --corpus path/to/wiki18_100w.zip --out data/processed/big --n 700 --k 20 --no-ragbench
+python -m experiments.extract_multidataset --data data/processed/big --backend cuda
+python -m experiments.extract_extra --data data/processed/big --batch-size 16
+python -m experiments.run_big dev   --data data/processed/big --out results/big_dev
+python -m experiments.run_big final --data data/processed/big --variant "gbr(500,d4)|u|ce|probe" --out results/big_final
+python -m experiments.answer_accuracy_big --data data/processed/big --variant "gbr(500,d4)|u|ce|probe"
+```
+
+### Second target LLM (Mistral-7B-Instruct-v0.3)
+
+Every test question of the larger study plus 40% of its development questions (4,099 questions, 73,885
+pairs) relabelled with Eq. 1 by Mistral, the 14 features recomputed with Mistral as M, probe on its
+layer 24; same test questions, variant reused without new selection
+([`results/cross_llm.md`](results/cross_llm.md)), scored against Mistral's utility, 1,714 rankable test questions:
+
+| Method (read / labels) | macro ρ | NDCG@10 | top-1 |
+|---|---|---|---|
+| **MPUP+ (Mistral / Mistral)** | **0.373** | 0.778 | 0.544 |
+| MPUP+ (Qwen / Mistral) | 0.322 | 0.757 | 0.536 |
+| MPUP+ (Qwen / Qwen), applied unchanged | 0.313 | 0.755 | 0.537 |
+| MPUP (Mistral / Mistral) | 0.247 | 0.690 | 0.409 |
+| Cross-encoder alone | 0.243 | 0.688 | 0.397 |
+| Dense similarity alone | 0.210 | 0.660 | 0.380 |
+| Utility for Qwen (reference) | 0.512 | 0.787 | 0.613 |
+
+MPUP+ − dense +0.161 [+0.147, +0.176]; zero-shot from Qwen − dense +0.101 [+0.088, +0.114], − cross-encoder
++0.068 [+0.056, +0.080]. Probe fitted to shuffled labels: 0.013. Answer accuracy with Mistral answering
+([`results/cross_llm_answer_accuracy.md`](results/cross_llm_answer_accuracy.md)): top-1 0.479 vs dense 0.380,
+cross-encoder 0.391, no passage 0.280. Labels + features 3.8 h (peak 27.2 GiB), hidden states 45 min.
+
+```bash
+python -m experiments.subset_items --out data/processed/big_mistral
+python -m experiments.extract_multidataset --data data/processed/big_mistral --backend cuda --model mistralai/Mistral-7B-Instruct-v0.3
+python -m experiments.extract_extra --data data/processed/big_mistral --model mistralai/Mistral-7B-Instruct-v0.3 --layers 16 24
+python -m experiments.run_cross_llm --out results/cross_llm
+python -m experiments.answer_accuracy_big --data data/processed/big_mistral --variant "gbr(500,d4)|u|ce|probe" \
+    --model mistralai/Mistral-7B-Instruct-v0.3 --layer 24 --out results/cross_llm_answer_accuracy
+```
+
 ### Earlier run — Apple Silicon, MLX Llama-3.2-3B-Instruct 4-bit
 
 Same questions and candidates, 719 rankable queries ([`results/multidataset.md`](results/multidataset.md)).

@@ -1,0 +1,2252 @@
+{
+ "variant": "gbr(500,d4)|u|ce|probe",
+ "layer": 24,
+ "n_dev_queries": 2005,
+ "n_test_queries": 2094,
+ "comparisons": {
+  "mpup+ (target LLM)": {
+   "n_queries": 1714,
+   "datasets": [
+    "2wikimultihopqa",
+    "ambigqa",
+    "entityquestions",
+    "hotpotqa",
+    "musique",
+    "nq",
+    "popqa",
+    "squad",
+    "triviaqa",
+    "webquestions"
+   ],
+   "macro": {
+    "mpup+ (target LLM)": {
+     "spearman": 0.3729458124816071,
+     "ndcg": 0.777600092190516,
+     "top1": 0.5443407234539089
+    },
+    "mpup (target LLM)": {
+     "spearman": 0.24727308058039404,
+     "ndcg": 0.6904428943882602,
+     "top1": 0.4089848308051342
+    },
+    "mpup+ (Qwen as reader)": {
+     "spearman": 0.3219861775454448,
+     "ndcg": 0.7570122719825488,
+     "top1": 0.5355892648774796
+    },
+    "mpup (Qwen as reader)": {
+     "spearman": 0.25803143644384796,
+     "ndcg": 0.6964920043485425,
+     "top1": 0.41248541423570595
+    },
+    "mpup+ (Qwen probe only)": {
+     "spearman": 0.32162139690524116,
+     "ndcg": 0.7543281939624544,
+     "top1": 0.5315052508751459
+    },
+    "mpup+ (zero-shot from Qwen)": {
+     "spearman": 0.3128847203218005,
+     "ndcg": 0.7551509632328661,
+     "top1": 0.5367561260210035
+    },
+    "probe alone (target LLM)": {
+     "spearman": 0.3668489297252459,
+     "ndcg": 0.7645872903866799,
+     "top1": 0.5326721120186698
+    },
+    "probe, shuffled labels": {
+     "spearman": 0.012925650258164528,
+     "ndcg": 0.49216901482893977,
+     "top1": 0.17736289381563594
+    },
+    "u (Qwen)": {
+     "spearman": 0.5124001693780756,
+     "ndcg": 0.787333995359786,
+     "top1": 0.6126021003500584
+    },
+    "dense": {
+     "spearman": 0.21012622744894544,
+     "ndcg": 0.6604031698552342,
+     "top1": 0.3798133022170362
+    },
+    "bm25": {
+     "spearman": 0.09498477929978383,
+     "ndcg": 0.5714187546091518,
+     "top1": 0.2852975495915986
+    },
+    "cross-encoder": {
+     "spearman": 0.24262101531064362,
+     "ndcg": 0.6882562358000648,
+     "top1": 0.396732788798133
+    }
+   },
+   "per_dataset": {
+    "2wikimultihopqa": {
+     "n_queries": 182,
+     "spearman": {
+      "mpup+ (target LLM)": 0.34445926241727687,
+      "mpup (target LLM)": 0.2623283641880922,
+      "mpup+ (Qwen as reader)": 0.32937953057783853,
+      "mpup (Qwen as reader)": 0.28607194781349315,
+      "mpup+ (Qwen probe only)": 0.31882729542064664,
+      "mpup+ (zero-shot from Qwen)": 0.2904444518255028,
+      "probe alone (target LLM)": 0.3468747254880531,
+      "probe, shuffled labels": 0.029728721346229395,
+      "u (Qwen)": 0.4709385522155913,
+      "dense": 0.23558291151873795,
+      "bm25": 0.13164158346702062,
+      "cross-encoder": 0.25178667623559364
+     }
+    },
+    "ambigqa": {
+     "n_queries": 155,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4564115333226875,
+      "mpup (target LLM)": 0.3017702823865951,
+      "mpup+ (Qwen as reader)": 0.37309659821589736,
+      "mpup (Qwen as reader)": 0.3044726728569624,
+      "mpup+ (Qwen probe only)": 0.37779677632226794,
+      "mpup+ (zero-shot from Qwen)": 0.3626642505020011,
+      "probe alone (target LLM)": 0.4529459573302839,
+      "probe, shuffled labels": -0.004648761130185295,
+      "u (Qwen)": 0.4945861297354039,
+      "dense": 0.27267537687849364,
+      "bm25": 0.13268259755992887,
+      "cross-encoder": 0.28163649168882793
+     }
+    },
+    "entityquestions": {
+     "n_queries": 186,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4491450129586273,
+      "mpup (target LLM)": 0.3470849686813048,
+      "mpup+ (Qwen as reader)": 0.41996095022492513,
+      "mpup (Qwen as reader)": 0.37415566841383946,
+      "mpup+ (Qwen probe only)": 0.4151018960295591,
+      "mpup+ (zero-shot from Qwen)": 0.42499362265412083,
+      "probe alone (target LLM)": 0.4414285415221485,
+      "probe, shuffled labels": -0.05255157397091325,
+      "u (Qwen)": 0.6620902011691179,
+      "dense": 0.3019727128257141,
+      "bm25": 0.21485961319469898,
+      "cross-encoder": 0.35446755238191496
+     }
+    },
+    "hotpotqa": {
+     "n_queries": 204,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4495919475153603,
+      "mpup (target LLM)": 0.34857617048172546,
+      "mpup+ (Qwen as reader)": 0.3816923394668366,
+      "mpup (Qwen as reader)": 0.34271501030142426,
+      "mpup+ (Qwen probe only)": 0.3815241162910402,
+      "mpup+ (zero-shot from Qwen)": 0.36901461477741676,
+      "probe alone (target LLM)": 0.42701045516397085,
+      "probe, shuffled labels": 0.055401739972556895,
+      "u (Qwen)": 0.602067716299102,
+      "dense": 0.28468776556731795,
+      "bm25": 0.09031193207733497,
+      "cross-encoder": 0.3369720317661062
+     }
+    },
+    "musique": {
+     "n_queries": 159,
+     "spearman": {
+      "mpup+ (target LLM)": 0.28707138954403527,
+      "mpup (target LLM)": 0.15250279464358457,
+      "mpup+ (Qwen as reader)": 0.27316809810755366,
+      "mpup (Qwen as reader)": 0.18952393993912642,
+      "mpup+ (Qwen probe only)": 0.2766723270317752,
+      "mpup+ (zero-shot from Qwen)": 0.27313810422889173,
+      "probe alone (target LLM)": 0.2959461751866023,
+      "probe, shuffled labels": 0.039836524905848464,
+      "u (Qwen)": 0.5041924522591764,
+      "dense": 0.10539655393557812,
+      "bm25": 0.011274447835573008,
+      "cross-encoder": 0.22586500035675872
+     }
+    },
+    "nq": {
+     "n_queries": 162,
+     "spearman": {
+      "mpup+ (target LLM)": 0.37602795333541045,
+      "mpup (target LLM)": 0.22228258270325463,
+      "mpup+ (Qwen as reader)": 0.29160720307922494,
+      "mpup (Qwen as reader)": 0.22741776013676337,
+      "mpup+ (Qwen probe only)": 0.2903175784805487,
+      "mpup+ (zero-shot from Qwen)": 0.29501787368811366,
+      "probe alone (target LLM)": 0.36516165636210757,
+      "probe, shuffled labels": -0.054394977055328815,
+      "u (Qwen)": 0.446482603164756,
+      "dense": 0.19766309099697543,
+      "bm25": 0.0434428724285995,
+      "cross-encoder": 0.16898762747643992
+     }
+    },
+    "popqa": {
+     "n_queries": 142,
+     "spearman": {
+      "mpup+ (target LLM)": 0.42736024900827224,
+      "mpup (target LLM)": 0.2750858830448861,
+      "mpup+ (Qwen as reader)": 0.3675845732835753,
+      "mpup (Qwen as reader)": 0.2910602974582706,
+      "mpup+ (Qwen probe only)": 0.3660655287255756,
+      "mpup+ (zero-shot from Qwen)": 0.36891781621566366,
+      "probe alone (target LLM)": 0.419094048343397,
+      "probe, shuffled labels": 0.02276076987637444,
+      "u (Qwen)": 0.6466058974793877,
+      "dense": 0.24339537419730037,
+      "bm25": 0.14848203580542474,
+      "cross-encoder": 0.29453759900594007
+     }
+    },
+    "squad": {
+     "n_queries": 177,
+     "spearman": {
+      "mpup+ (target LLM)": 0.3072148915326634,
+      "mpup (target LLM)": 0.22875794074792702,
+      "mpup+ (Qwen as reader)": 0.2703655223305234,
+      "mpup (Qwen as reader)": 0.23506611405267408,
+      "mpup+ (Qwen probe only)": 0.27476225414466354,
+      "mpup+ (zero-shot from Qwen)": 0.26412847456569816,
+      "probe alone (target LLM)": 0.29153021955846703,
+      "probe, shuffled labels": 0.042414321019853,
+      "u (Qwen)": 0.5072085307615575,
+      "dense": 0.19035292200435858,
+      "bm25": 0.11952191943309433,
+      "cross-encoder": 0.2505319406788398
+     }
+    },
+    "triviaqa": {
+     "n_queries": 192,
+     "spearman": {
+      "mpup+ (target LLM)": 0.33732814249428716,
+      "mpup (target LLM)": 0.19641610070171134,
+      "mpup+ (Qwen as reader)": 0.283140089050463,
+      "mpup (Qwen as reader)": 0.20408582398808206,
+      "mpup+ (Qwen probe only)": 0.2872882354877346,
+      "mpup+ (zero-shot from Qwen)": 0.26020743920478745,
+      "probe alone (target LLM)": 0.32444672768492033,
+      "probe, shuffled labels": 0.049265926670543865,
+      "u (Qwen)": 0.4165735154905638,
+      "dense": 0.16613222089120633,
+      "bm25": 0.09379005688649562,
+      "cross-encoder": 0.18883455563416243
+     }
+    },
+    "webquestions": {
+     "n_queries": 155,
+     "spearman": {
+      "mpup+ (target LLM)": 0.29484774268744973,
+      "mpup (target LLM)": 0.13792571822485922,
+      "mpup+ (Qwen as reader)": 0.22986687111760937,
+      "mpup (Qwen as reader)": 0.12574512947784383,
+      "mpup+ (Qwen probe only)": 0.22785796111859982,
+      "mpup+ (zero-shot from Qwen)": 0.22032055555580896,
+      "probe alone (target LLM)": 0.3040507906125089,
+      "probe, shuffled labels": 0.0014438109466665568,
+      "u (Qwen)": 0.37325609520609976,
+      "dense": 0.10340334567377217,
+      "bm25": -0.03615926569033241,
+      "cross-encoder": 0.07259067788185211
+     }
+    }
+   },
+   "paired_ci": {
+    "mpup (target LLM)": [
+     0.12351145089055168,
+     0.10986780564617833,
+     0.13691907949431828
+    ],
+    "mpup+ (Qwen as reader)": [
+     0.05035676335054,
+     0.04016724584744807,
+     0.06109229397356822
+    ],
+    "mpup (Qwen as reader)": [
+     0.11285366430988883,
+     0.09946534578901152,
+     0.12653304457525372
+    ],
+    "mpup+ (Qwen probe only)": [
+     0.050785145682150194,
+     0.04072326353253208,
+     0.06095939474075635
+    ],
+    "mpup+ (zero-shot from Qwen)": [
+     0.06004346231315601,
+     0.04956735178618055,
+     0.07135037395110588
+    ],
+    "probe alone (target LLM)": [
+     0.006700953306987178,
+     0.0018722548185748807,
+     0.011456817467060357
+    ],
+    "probe, shuffled labels": [
+     0.3597566579340729,
+     0.3371945104038041,
+     0.3812019049740705
+    ],
+    "u (Qwen)": [
+     -0.13972299868870985,
+     -0.15911997115816645,
+     -0.12056796968232737
+    ],
+    "dense": [
+     0.16128447312115363,
+     0.14653050296498774,
+     0.17583432142764083
+    ],
+    "bm25": [
+     0.2767790361889447,
+     0.25902327221755317,
+     0.2945699049935472
+    ],
+    "cross-encoder": [
+     0.12816083641297005,
+     0.1142999412892863,
+     0.14226225814080434
+    ]
+   },
+   "tests": {
+    "mpup (target LLM)": {
+     "n": 1714,
+     "mean_diff": 0.12351145089055168,
+     "sd": 0.2773791463932903,
+     "cohen_dz": 0.4452802328385108,
+     "share_mpup_wins": 0.6455696202531646,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 2.2639116786557955e-69,
+     "p_wilcoxon": 9.507170224550168e-68,
+     "p_shapiro": 5.937278140631128e-17,
+     "mde_80": 0.018770342707795692,
+     "n_needed_for_observed_mean": 40
+    },
+    "mpup+ (Qwen as reader)": {
+     "n": 1714,
+     "mean_diff": 0.05035676335054,
+     "sd": 0.21287540509994643,
+     "cohen_dz": 0.23655510286356077,
+     "share_mpup_wins": 0.6123287671232877,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 4.501822619246216e-22,
+     "p_wilcoxon": 9.707745145117702e-22,
+     "p_shapiro": 2.615076400869788e-23,
+     "mde_80": 0.014405352239859255,
+     "n_needed_for_observed_mean": 141
+    },
+    "mpup (Qwen as reader)": {
+     "n": 1714,
+     "mean_diff": 0.11285366430988883,
+     "sd": 0.27902244673283416,
+     "cohen_dz": 0.40446087987303386,
+     "share_mpup_wins": 0.647775746496039,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 2.0970787361820213e-58,
+     "p_wilcoxon": 1.911838418299633e-58,
+     "p_shapiro": 6.095178396311419e-16,
+     "mde_80": 0.018881545409751302,
+     "n_needed_for_observed_mean": 48
+    },
+    "mpup+ (Qwen probe only)": {
+     "n": 1714,
+     "mean_diff": 0.050785145682150194,
+     "sd": 0.20853901150713824,
+     "cohen_dz": 0.2435282747104219,
+     "share_mpup_wins": 0.6125,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 2.908381471378671e-23,
+     "p_wilcoxon": 1.2645257549601254e-23,
+     "p_shapiro": 2.230243440013257e-24,
+     "mde_80": 0.014111906986633588,
+     "n_needed_for_observed_mean": 133
+    },
+    "mpup+ (zero-shot from Qwen)": {
+     "n": 1714,
+     "mean_diff": 0.06004346231315601,
+     "sd": 0.22468441457518998,
+     "cohen_dz": 0.267234656336444,
+     "share_mpup_wins": 0.6228610540725531,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 1.5719916722836579e-27,
+     "p_wilcoxon": 1.1986382239550639e-26,
+     "p_shapiro": 2.1324665648833993e-24,
+     "mde_80": 0.015204471992631306,
+     "n_needed_for_observed_mean": 110
+    },
+    "probe alone (target LLM)": {
+     "n": 1714,
+     "mean_diff": 0.006700953306987178,
+     "sd": 0.10147973599673922,
+     "cohen_dz": 0.06603242747106176,
+     "share_mpup_wins": 0.5279225614296351,
+     "p_permutation": 0.006104969475152624,
+     "p_ttest": 0.006325726977050575,
+     "p_wilcoxon": 0.0028729092198846113,
+     "p_shapiro": 5.657639428300465e-34,
+     "mde_80": 0.006867168809635873,
+     "n_needed_for_observed_mean": 1801
+    },
+    "probe, shuffled labels": {
+     "n": 1714,
+     "mean_diff": 0.3597566579340729,
+     "sd": 0.4564465613811888,
+     "cohen_dz": 0.7881681852207713,
+     "share_mpup_wins": 0.8014397120575885,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 4.813807319120173e-182,
+     "p_wilcoxon": 2.293426377083159e-153,
+     "p_shapiro": 0.0038358765372204736,
+     "mde_80": 0.030887896571618632,
+     "n_needed_for_observed_mean": 13
+    },
+    "u (Qwen)": {
+     "n": 1714,
+     "mean_diff": -0.13972299868870985,
+     "sd": 0.40033852038736034,
+     "cohen_dz": -0.34901212742035514,
+     "share_mpup_wins": 0.3605600933488915,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 9.675283835023389e-45,
+     "p_wilcoxon": 9.945269429682418e-43,
+     "p_shapiro": 0.0002749644479864735,
+     "mde_80": 0.02709104604478074,
+     "n_needed_for_observed_mean": 65
+    },
+    "dense": {
+     "n": 1714,
+     "mean_diff": 0.16128447312115363,
+     "sd": 0.30689143472459307,
+     "cohen_dz": 0.5255424390253565,
+     "share_mpup_wins": 0.7301587301587301,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 7.103038711854057e-93,
+     "p_wilcoxon": 2.860531329706614e-90,
+     "p_shapiro": 1.1955798658140324e-12,
+     "mde_80": 0.020767449459593065,
+     "n_needed_for_observed_mean": 29
+    },
+    "bm25": {
+     "n": 1714,
+     "mean_diff": 0.2767790361889447,
+     "sd": 0.36906513988909845,
+     "cohen_dz": 0.7499463001900286,
+     "share_mpup_wins": 0.7810437912417516,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 2.757417345687973e-168,
+     "p_wilcoxon": 1.0303020169327894e-145,
+     "p_shapiro": 0.0004923865565077235,
+     "mde_80": 0.02497476557735383,
+     "n_needed_for_observed_mean": 14
+    },
+    "cross-encoder": {
+     "n": 1714,
+     "mean_diff": 0.12816083641297005,
+     "sd": 0.2903345628238021,
+     "cohen_dz": 0.44142466252200274,
+     "share_mpup_wins": 0.6898089171974522,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 2.638104295538495e-68,
+     "p_wilcoxon": 1.9421149180177848e-67,
+     "p_shapiro": 6.585910472167612e-17,
+     "mde_80": 0.019647040215466715,
+     "n_needed_for_observed_mean": 41
+    }
+   },
+   "per_dataset_tests": {
+    "dense": {
+     "2wikimultihopqa": {
+      "n": 182,
+      "mean_diff": 0.10887635089853893,
+      "sd": 0.32309152031286875,
+      "cohen_dz": 0.3369830034323014,
+      "share_mpup_wins": 0.7028571428571428,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 9.971942549400955e-06,
+      "p_wilcoxon": 1.4285201261386388e-05,
+      "p_shapiro": 0.009108831478841397,
+      "mde_80": 0.06709554260418604,
+      "n_needed_for_observed_mean": 70,
+      "p_holm": 0.0001999960000799984
+     },
+     "ambigqa": {
+      "n": 155,
+      "mean_diff": 0.18373615644419392,
+      "sd": 0.26083820820488907,
+      "cohen_dz": 0.7044066040350526,
+      "share_mpup_wins": 0.8085106382978723,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 3.1254450876181252e-15,
+      "p_wilcoxon": 1.4483366049900253e-14,
+      "p_shapiro": 0.0007690993977271283,
+      "mde_80": 0.05869608873406077,
+      "n_needed_for_observed_mean": 16,
+      "p_holm": 0.0001999960000799984
+     },
+     "entityquestions": {
+      "n": 186,
+      "mean_diff": 0.14717230013291324,
+      "sd": 0.25529080196277204,
+      "cohen_dz": 0.5764888472338097,
+      "share_mpup_wins": 0.75625,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 3.024869052239186e-13,
+      "p_wilcoxon": 3.747897157344971e-13,
+      "p_shapiro": 5.1248503471532006e-06,
+      "mde_80": 0.05244239278429189,
+      "n_needed_for_observed_mean": 24,
+      "p_holm": 0.0001999960000799984
+     },
+     "hotpotqa": {
+      "n": 204,
+      "mean_diff": 0.16490418194804243,
+      "sd": 0.37701305690390663,
+      "cohen_dz": 0.4373964745472286,
+      "share_mpup_wins": 0.7034883720930233,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 2.409434438019603e-09,
+      "p_wilcoxon": 1.768682915276316e-09,
+      "p_shapiro": 1.80410397208503e-06,
+      "mde_80": 0.07395118046724213,
+      "n_needed_for_observed_mean": 42,
+      "p_holm": 0.0001999960000799984
+     },
+     "musique": {
+      "n": 159,
+      "mean_diff": 0.1816748356084571,
+      "sd": 0.30019790534322033,
+      "cohen_dz": 0.6051835551642034,
+      "share_mpup_wins": 0.7677419354838709,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 2.0641803964198218e-12,
+      "p_wilcoxon": 6.2197661274414765e-12,
+      "p_shapiro": 0.17036208132367825,
+      "mde_80": 0.06669801344061832,
+      "n_needed_for_observed_mean": 22,
+      "p_holm": 0.0001999960000799984
+     },
+     "nq": {
+      "n": 162,
+      "mean_diff": 0.17836486233843502,
+      "sd": 0.27245414982008465,
+      "cohen_dz": 0.6546601050349882,
+      "share_mpup_wins": 0.7806451612903226,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 3.292115536957021e-14,
+      "p_wilcoxon": 3.910326623174529e-14,
+      "p_shapiro": 0.03487032044217512,
+      "mde_80": 0.059970783576771075,
+      "n_needed_for_observed_mean": 19,
+      "p_holm": 0.0001999960000799984
+     },
+     "popqa": {
+      "n": 142,
+      "mean_diff": 0.18396487481097182,
+      "sd": 0.26942416620322207,
+      "cohen_dz": 0.6828076241394405,
+      "share_mpup_wins": 0.75,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.9139496755384947e-13,
+      "p_wilcoxon": 9.912975448941254e-12,
+      "p_shapiro": 0.022132531288142878,
+      "mde_80": 0.06334264274509814,
+      "n_needed_for_observed_mean": 17,
+      "p_holm": 0.0001999960000799984
+     },
+     "squad": {
+      "n": 177,
+      "mean_diff": 0.11686196952830484,
+      "sd": 0.3010578760967276,
+      "cohen_dz": 0.38817110863679244,
+      "share_mpup_wins": 0.65625,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 6.483231764366929e-07,
+      "p_wilcoxon": 4.624955991943201e-06,
+      "p_shapiro": 0.0013662506629984945,
+      "mde_80": 0.06339677469442805,
+      "n_needed_for_observed_mean": 53,
+      "p_holm": 0.0001999960000799984
+     },
+     "triviaqa": {
+      "n": 192,
+      "mean_diff": 0.17119592160308095,
+      "sd": 0.3068954979457411,
+      "cohen_dz": 0.5578313228737825,
+      "share_mpup_wins": 0.7049180327868853,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 5.987935041055557e-13,
+      "p_wilcoxon": 4.769978382790923e-12,
+      "p_shapiro": 0.1005640337203571,
+      "mde_80": 0.06205027443876876,
+      "n_needed_for_observed_mean": 26,
+      "p_holm": 0.0001999960000799984
+     },
+     "webquestions": {
+      "n": 155,
+      "mean_diff": 0.19144439701367755,
+      "sd": 0.3546685246706636,
+      "cohen_dz": 0.5397840059008565,
+      "share_mpup_wins": 0.6933333333333334,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 3.318063833655978e-10,
+      "p_wilcoxon": 1.3992515172771264e-09,
+      "p_shapiro": 0.8231619243367807,
+      "mde_80": 0.0798106049666442,
+      "n_needed_for_observed_mean": 27,
+      "p_holm": 0.0001999960000799984
+     }
+    },
+    "cross-encoder": {
+     "2wikimultihopqa": {
+      "n": 182,
+      "mean_diff": 0.0926725861816832,
+      "sd": 0.32784821115618357,
+      "cohen_dz": 0.2826691835678033,
+      "share_mpup_wins": 0.6629213483146067,
+      "p_permutation": 0.00011999760004799904,
+      "p_ttest": 0.00018782365074104234,
+      "p_wilcoxon": 4.4695268936053696e-05,
+      "p_shapiro": 0.008239702988253786,
+      "mde_80": 0.0680833517327683,
+      "n_needed_for_observed_mean": 99,
+      "p_holm": 0.0003599928001439971
+     },
+     "ambigqa": {
+      "n": 155,
+      "mean_diff": 0.17477504163385957,
+      "sd": 0.24958742295308362,
+      "cohen_dz": 0.7002558044229378,
+      "share_mpup_wins": 0.7985611510791367,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 4.243265076627368e-15,
+      "p_wilcoxon": 1.6124667121824112e-14,
+      "p_shapiro": 6.381892548283862e-06,
+      "mde_80": 0.05616433890334154,
+      "n_needed_for_observed_mean": 17,
+      "p_holm": 0.0001999960000799984
+     },
+     "entityquestions": {
+      "n": 186,
+      "mean_diff": 0.09467746057671235,
+      "sd": 0.2069859572050202,
+      "cohen_dz": 0.4574100671135581,
+      "share_mpup_wins": 0.7086092715231788,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 2.9369657244212903e-09,
+      "p_wilcoxon": 5.717538210739746e-09,
+      "p_shapiro": 4.960846930989692e-09,
+      "mde_80": 0.042519506324247495,
+      "n_needed_for_observed_mean": 38,
+      "p_holm": 0.0001999960000799984
+     },
+     "hotpotqa": {
+      "n": 204,
+      "mean_diff": 0.11261991574925413,
+      "sd": 0.3490725242110553,
+      "cohen_dz": 0.32262612476816477,
+      "share_mpup_wins": 0.6573033707865169,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 7.175373007459111e-06,
+      "p_wilcoxon": 2.4596583033367316e-06,
+      "p_shapiro": 4.098603305733872e-05,
+      "mde_80": 0.06847063983958272,
+      "n_needed_for_observed_mean": 76,
+      "p_holm": 0.0001999960000799984
+     },
+     "musique": {
+      "n": 159,
+      "mean_diff": 0.06120638918727654,
+      "sd": 0.22215470178917404,
+      "cohen_dz": 0.27551246358657633,
+      "share_mpup_wins": 0.6298701298701299,
+      "p_permutation": 0.0007999840003199936,
+      "p_ttest": 0.0006616677989575932,
+      "p_wilcoxon": 0.0007399945997997094,
+      "p_shapiro": 0.018694756393026507,
+      "mde_80": 0.049358363339977646,
+      "n_needed_for_observed_mean": 104,
+      "p_holm": 0.0015999680006399872
+     },
+     "nq": {
+      "n": 162,
+      "mean_diff": 0.20704032585897048,
+      "sd": 0.30020894613873056,
+      "cohen_dz": 0.6896540843366286,
+      "share_mpup_wins": 0.7935483870967742,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 2.317187984818277e-15,
+      "p_wilcoxon": 1.202308457218416e-14,
+      "p_shapiro": 0.0464100155028155,
+      "mde_80": 0.06607998354433264,
+      "n_needed_for_observed_mean": 17,
+      "p_holm": 0.0001999960000799984
+     },
+     "popqa": {
+      "n": 142,
+      "mean_diff": 0.1328226500023321,
+      "sd": 0.24349542976987826,
+      "cohen_dz": 0.5454831334118247,
+      "share_mpup_wins": 0.7377049180327869,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.2897396691652992e-09,
+      "p_wilcoxon": 6.103167061244162e-09,
+      "p_shapiro": 0.0001423079470353676,
+      "mde_80": 0.057246698524970996,
+      "n_needed_for_observed_mean": 27,
+      "p_holm": 0.0001999960000799984
+     },
+     "squad": {
+      "n": 177,
+      "mean_diff": 0.05668295085382357,
+      "sd": 0.2623704487208918,
+      "cohen_dz": 0.21604167363422305,
+      "share_mpup_wins": 0.5384615384615384,
+      "p_permutation": 0.004239915201695966,
+      "p_ttest": 0.004549220618561424,
+      "p_wilcoxon": 0.040727790549647425,
+      "p_shapiro": 2.3708405921203223e-05,
+      "mde_80": 0.05524997531933086,
+      "n_needed_for_observed_mean": 169,
+      "p_holm": 0.004239915201695966
+     },
+     "triviaqa": {
+      "n": 192,
+      "mean_diff": 0.14849358686012482,
+      "sd": 0.3009031901559158,
+      "cohen_dz": 0.49349289644679895,
+      "share_mpup_wins": 0.6827956989247311,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.0541067146495717e-10,
+      "p_wilcoxon": 2.2852541136878563e-10,
+      "p_shapiro": 0.03450234918714741,
+      "mde_80": 0.06083870781309617,
+      "n_needed_for_observed_mean": 33,
+      "p_holm": 0.0001999960000799984
+     },
+     "webquestions": {
+      "n": 155,
+      "mean_diff": 0.22225706480559765,
+      "sd": 0.33907210778537306,
+      "cohen_dz": 0.6554861331923021,
+      "share_mpup_wins": 0.7218543046357616,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.1044852736216572e-13,
+      "p_wilcoxon": 6.6441222331800875e-12,
+      "p_shapiro": 0.1609536779200441,
+      "mde_80": 0.07630096320161056,
+      "n_needed_for_observed_mean": 19,
+      "p_holm": 0.0001999960000799984
+     }
+    }
+   }
+  },
+  "mpup+ (Qwen as reader)": {
+   "n_queries": 1714,
+   "datasets": [
+    "2wikimultihopqa",
+    "ambigqa",
+    "entityquestions",
+    "hotpotqa",
+    "musique",
+    "nq",
+    "popqa",
+    "squad",
+    "triviaqa",
+    "webquestions"
+   ],
+   "macro": {
+    "mpup+ (target LLM)": {
+     "spearman": 0.3729458124816071,
+     "ndcg": 0.777600092190516,
+     "top1": 0.5443407234539089
+    },
+    "mpup (target LLM)": {
+     "spearman": 0.24727308058039404,
+     "ndcg": 0.6904428943882602,
+     "top1": 0.4089848308051342
+    },
+    "mpup+ (Qwen as reader)": {
+     "spearman": 0.3219861775454448,
+     "ndcg": 0.7570122719825488,
+     "top1": 0.5355892648774796
+    },
+    "mpup (Qwen as reader)": {
+     "spearman": 0.25803143644384796,
+     "ndcg": 0.6964920043485425,
+     "top1": 0.41248541423570595
+    },
+    "mpup+ (Qwen probe only)": {
+     "spearman": 0.32162139690524116,
+     "ndcg": 0.7543281939624544,
+     "top1": 0.5315052508751459
+    },
+    "mpup+ (zero-shot from Qwen)": {
+     "spearman": 0.3128847203218005,
+     "ndcg": 0.7551509632328661,
+     "top1": 0.5367561260210035
+    },
+    "probe alone (target LLM)": {
+     "spearman": 0.3668489297252459,
+     "ndcg": 0.7645872903866799,
+     "top1": 0.5326721120186698
+    },
+    "probe, shuffled labels": {
+     "spearman": 0.012925650258164528,
+     "ndcg": 0.49216901482893977,
+     "top1": 0.17736289381563594
+    },
+    "u (Qwen)": {
+     "spearman": 0.5124001693780756,
+     "ndcg": 0.787333995359786,
+     "top1": 0.6126021003500584
+    },
+    "dense": {
+     "spearman": 0.21012622744894544,
+     "ndcg": 0.6604031698552342,
+     "top1": 0.3798133022170362
+    },
+    "bm25": {
+     "spearman": 0.09498477929978383,
+     "ndcg": 0.5714187546091518,
+     "top1": 0.2852975495915986
+    },
+    "cross-encoder": {
+     "spearman": 0.24262101531064362,
+     "ndcg": 0.6882562358000648,
+     "top1": 0.396732788798133
+    }
+   },
+   "per_dataset": {
+    "2wikimultihopqa": {
+     "n_queries": 182,
+     "spearman": {
+      "mpup+ (target LLM)": 0.34445926241727687,
+      "mpup (target LLM)": 0.2623283641880922,
+      "mpup+ (Qwen as reader)": 0.32937953057783853,
+      "mpup (Qwen as reader)": 0.28607194781349315,
+      "mpup+ (Qwen probe only)": 0.31882729542064664,
+      "mpup+ (zero-shot from Qwen)": 0.2904444518255028,
+      "probe alone (target LLM)": 0.3468747254880531,
+      "probe, shuffled labels": 0.029728721346229395,
+      "u (Qwen)": 0.4709385522155913,
+      "dense": 0.23558291151873795,
+      "bm25": 0.13164158346702062,
+      "cross-encoder": 0.25178667623559364
+     }
+    },
+    "ambigqa": {
+     "n_queries": 155,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4564115333226875,
+      "mpup (target LLM)": 0.3017702823865951,
+      "mpup+ (Qwen as reader)": 0.37309659821589736,
+      "mpup (Qwen as reader)": 0.3044726728569624,
+      "mpup+ (Qwen probe only)": 0.37779677632226794,
+      "mpup+ (zero-shot from Qwen)": 0.3626642505020011,
+      "probe alone (target LLM)": 0.4529459573302839,
+      "probe, shuffled labels": -0.004648761130185295,
+      "u (Qwen)": 0.4945861297354039,
+      "dense": 0.27267537687849364,
+      "bm25": 0.13268259755992887,
+      "cross-encoder": 0.28163649168882793
+     }
+    },
+    "entityquestions": {
+     "n_queries": 186,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4491450129586273,
+      "mpup (target LLM)": 0.3470849686813048,
+      "mpup+ (Qwen as reader)": 0.41996095022492513,
+      "mpup (Qwen as reader)": 0.37415566841383946,
+      "mpup+ (Qwen probe only)": 0.4151018960295591,
+      "mpup+ (zero-shot from Qwen)": 0.42499362265412083,
+      "probe alone (target LLM)": 0.4414285415221485,
+      "probe, shuffled labels": -0.05255157397091325,
+      "u (Qwen)": 0.6620902011691179,
+      "dense": 0.3019727128257141,
+      "bm25": 0.21485961319469898,
+      "cross-encoder": 0.35446755238191496
+     }
+    },
+    "hotpotqa": {
+     "n_queries": 204,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4495919475153603,
+      "mpup (target LLM)": 0.34857617048172546,
+      "mpup+ (Qwen as reader)": 0.3816923394668366,
+      "mpup (Qwen as reader)": 0.34271501030142426,
+      "mpup+ (Qwen probe only)": 0.3815241162910402,
+      "mpup+ (zero-shot from Qwen)": 0.36901461477741676,
+      "probe alone (target LLM)": 0.42701045516397085,
+      "probe, shuffled labels": 0.055401739972556895,
+      "u (Qwen)": 0.602067716299102,
+      "dense": 0.28468776556731795,
+      "bm25": 0.09031193207733497,
+      "cross-encoder": 0.3369720317661062
+     }
+    },
+    "musique": {
+     "n_queries": 159,
+     "spearman": {
+      "mpup+ (target LLM)": 0.28707138954403527,
+      "mpup (target LLM)": 0.15250279464358457,
+      "mpup+ (Qwen as reader)": 0.27316809810755366,
+      "mpup (Qwen as reader)": 0.18952393993912642,
+      "mpup+ (Qwen probe only)": 0.2766723270317752,
+      "mpup+ (zero-shot from Qwen)": 0.27313810422889173,
+      "probe alone (target LLM)": 0.2959461751866023,
+      "probe, shuffled labels": 0.039836524905848464,
+      "u (Qwen)": 0.5041924522591764,
+      "dense": 0.10539655393557812,
+      "bm25": 0.011274447835573008,
+      "cross-encoder": 0.22586500035675872
+     }
+    },
+    "nq": {
+     "n_queries": 162,
+     "spearman": {
+      "mpup+ (target LLM)": 0.37602795333541045,
+      "mpup (target LLM)": 0.22228258270325463,
+      "mpup+ (Qwen as reader)": 0.29160720307922494,
+      "mpup (Qwen as reader)": 0.22741776013676337,
+      "mpup+ (Qwen probe only)": 0.2903175784805487,
+      "mpup+ (zero-shot from Qwen)": 0.29501787368811366,
+      "probe alone (target LLM)": 0.36516165636210757,
+      "probe, shuffled labels": -0.054394977055328815,
+      "u (Qwen)": 0.446482603164756,
+      "dense": 0.19766309099697543,
+      "bm25": 0.0434428724285995,
+      "cross-encoder": 0.16898762747643992
+     }
+    },
+    "popqa": {
+     "n_queries": 142,
+     "spearman": {
+      "mpup+ (target LLM)": 0.42736024900827224,
+      "mpup (target LLM)": 0.2750858830448861,
+      "mpup+ (Qwen as reader)": 0.3675845732835753,
+      "mpup (Qwen as reader)": 0.2910602974582706,
+      "mpup+ (Qwen probe only)": 0.3660655287255756,
+      "mpup+ (zero-shot from Qwen)": 0.36891781621566366,
+      "probe alone (target LLM)": 0.419094048343397,
+      "probe, shuffled labels": 0.02276076987637444,
+      "u (Qwen)": 0.6466058974793877,
+      "dense": 0.24339537419730037,
+      "bm25": 0.14848203580542474,
+      "cross-encoder": 0.29453759900594007
+     }
+    },
+    "squad": {
+     "n_queries": 177,
+     "spearman": {
+      "mpup+ (target LLM)": 0.3072148915326634,
+      "mpup (target LLM)": 0.22875794074792702,
+      "mpup+ (Qwen as reader)": 0.2703655223305234,
+      "mpup (Qwen as reader)": 0.23506611405267408,
+      "mpup+ (Qwen probe only)": 0.27476225414466354,
+      "mpup+ (zero-shot from Qwen)": 0.26412847456569816,
+      "probe alone (target LLM)": 0.29153021955846703,
+      "probe, shuffled labels": 0.042414321019853,
+      "u (Qwen)": 0.5072085307615575,
+      "dense": 0.19035292200435858,
+      "bm25": 0.11952191943309433,
+      "cross-encoder": 0.2505319406788398
+     }
+    },
+    "triviaqa": {
+     "n_queries": 192,
+     "spearman": {
+      "mpup+ (target LLM)": 0.33732814249428716,
+      "mpup (target LLM)": 0.19641610070171134,
+      "mpup+ (Qwen as reader)": 0.283140089050463,
+      "mpup (Qwen as reader)": 0.20408582398808206,
+      "mpup+ (Qwen probe only)": 0.2872882354877346,
+      "mpup+ (zero-shot from Qwen)": 0.26020743920478745,
+      "probe alone (target LLM)": 0.32444672768492033,
+      "probe, shuffled labels": 0.049265926670543865,
+      "u (Qwen)": 0.4165735154905638,
+      "dense": 0.16613222089120633,
+      "bm25": 0.09379005688649562,
+      "cross-encoder": 0.18883455563416243
+     }
+    },
+    "webquestions": {
+     "n_queries": 155,
+     "spearman": {
+      "mpup+ (target LLM)": 0.29484774268744973,
+      "mpup (target LLM)": 0.13792571822485922,
+      "mpup+ (Qwen as reader)": 0.22986687111760937,
+      "mpup (Qwen as reader)": 0.12574512947784383,
+      "mpup+ (Qwen probe only)": 0.22785796111859982,
+      "mpup+ (zero-shot from Qwen)": 0.22032055555580896,
+      "probe alone (target LLM)": 0.3040507906125089,
+      "probe, shuffled labels": 0.0014438109466665568,
+      "u (Qwen)": 0.37325609520609976,
+      "dense": 0.10340334567377217,
+      "bm25": -0.03615926569033241,
+      "cross-encoder": 0.07259067788185211
+     }
+    }
+   },
+   "paired_ci": {
+    "mpup+ (target LLM)": [
+     -0.05035676335054,
+     -0.061092293973568225,
+     -0.04016724584744807
+    ],
+    "mpup (target LLM)": [
+     0.07315468754001167,
+     0.061361208426416396,
+     0.0849603880104913
+    ],
+    "mpup (Qwen as reader)": [
+     0.06249690095934883,
+     0.051469930155044856,
+     0.0735673825950552
+    ],
+    "mpup+ (Qwen probe only)": [
+     0.00042838233161019063,
+     -0.004136160945573619,
+     0.004886335264735303
+    ],
+    "mpup+ (zero-shot from Qwen)": [
+     0.009686698962616005,
+     0.004729540192120293,
+     0.01505305274887202
+    ],
+    "probe alone (target LLM)": [
+     -0.04365581004355282,
+     -0.055280930754184325,
+     -0.032157635899693574
+    ],
+    "probe, shuffled labels": [
+     0.30939989458353284,
+     0.286306167896268,
+     0.33035784554118647
+    ],
+    "u (Qwen)": [
+     -0.19007976203924987,
+     -0.2076339751035135,
+     -0.17348292006914798
+    ],
+    "dense": [
+     0.11092770977061366,
+     0.09821031365141165,
+     0.12330427346164227
+    ],
+    "bm25": [
+     0.22642227283840471,
+     0.20891165668727538,
+     0.24310804006823628
+    ],
+    "cross-encoder": [
+     0.07780407306243003,
+     0.06604147878710613,
+     0.08941212297382398
+    ]
+   },
+   "tests": {
+    "mpup+ (target LLM)": {
+     "n": 1714,
+     "mean_diff": -0.05035676335054,
+     "sd": 0.21287540509994643,
+     "cohen_dz": -0.23655510286356077,
+     "share_mpup_wins": 0.38767123287671235,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 4.501822619246216e-22,
+     "p_wilcoxon": 9.707745145117702e-22,
+     "p_shapiro": 2.6150764008694687e-23,
+     "mde_80": 0.014405352239859255,
+     "n_needed_for_observed_mean": 141
+    },
+    "mpup (target LLM)": {
+     "n": 1714,
+     "mean_diff": 0.07315468754001167,
+     "sd": 0.2552766944657392,
+     "cohen_dz": 0.2865701770900586,
+     "share_mpup_wins": 0.6075105996365839,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 2.9344841649135287e-31,
+     "p_wilcoxon": 5.304679925947615e-33,
+     "p_shapiro": 2.1807686317513448e-14,
+     "mde_80": 0.017274662146523515,
+     "n_needed_for_observed_mean": 96
+    },
+    "mpup (Qwen as reader)": {
+     "n": 1714,
+     "mean_diff": 0.06249690095934883,
+     "sd": 0.23081009263930313,
+     "cohen_dz": 0.27077195907986323,
+     "share_mpup_wins": 0.588163514338011,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 3.3941053317907206e-28,
+     "p_wilcoxon": 5.820520433576403e-30,
+     "p_shapiro": 3.6886592501272705e-16,
+     "mde_80": 0.015618998744465783,
+     "n_needed_for_observed_mean": 108
+    },
+    "mpup+ (Qwen probe only)": {
+     "n": 1714,
+     "mean_diff": 0.00042838233161019063,
+     "sd": 0.09878784785804572,
+     "cohen_dz": 0.004336386923073365,
+     "share_mpup_wins": 0.502706883217324,
+     "p_permutation": 0.8583457082714586,
+     "p_ttest": 0.8575439630243468,
+     "p_wilcoxon": 0.9130141854334342,
+     "p_shapiro": 3.588308364921543e-33,
+     "mde_80": 0.00668500780888535,
+     "n_needed_for_observed_mean": 417400
+    },
+    "mpup+ (zero-shot from Qwen)": {
+     "n": 1714,
+     "mean_diff": 0.009686698962616005,
+     "sd": 0.10852955529117542,
+     "cohen_dz": 0.08925401874749628,
+     "share_mpup_wins": 0.5153558052434457,
+     "p_permutation": 0.00019499902500487497,
+     "p_ttest": 0.0002266551507647674,
+     "p_wilcoxon": 0.005620983022093259,
+     "p_shapiro": 1.5032073311879417e-32,
+     "mde_80": 0.007344232517939932,
+     "n_needed_for_observed_mean": 986
+    },
+    "probe alone (target LLM)": {
+     "n": 1714,
+     "mean_diff": -0.04365581004355282,
+     "sd": 0.2300239742460628,
+     "cohen_dz": -0.18978808703154146,
+     "share_mpup_wins": 0.4158751696065129,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 6.876065247606558e-15,
+     "p_wilcoxon": 2.2982486259043034e-14,
+     "p_shapiro": 3.7611340884424655e-21,
+     "mde_80": 0.01556580184108682,
+     "n_needed_for_observed_mean": 218
+    },
+    "probe, shuffled labels": {
+     "n": 1714,
+     "mean_diff": 0.30939989458353284,
+     "sd": 0.45294367286187404,
+     "cohen_dz": 0.6830869115107054,
+     "share_mpup_wins": 0.749551703526599,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 1.0376652293780997e-144,
+     "p_wilcoxon": 5.089297479948835e-125,
+     "p_shapiro": 0.010954735548178036,
+     "mde_80": 0.030650854894803053,
+     "n_needed_for_observed_mean": 17
+    },
+    "u (Qwen)": {
+     "n": 1714,
+     "mean_diff": -0.19007976203924987,
+     "sd": 0.37114992976323585,
+     "cohen_dz": -0.512137405388991,
+     "share_mpup_wins": 0.29929988331388563,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 8.684868618907691e-89,
+     "p_wilcoxon": 6.421079771742395e-82,
+     "p_shapiro": 1.321179028512837e-05,
+     "mde_80": 0.025115844028708697,
+     "n_needed_for_observed_mean": 30
+    },
+    "dense": {
+     "n": 1714,
+     "mean_diff": 0.11092770977061366,
+     "sd": 0.2728600671288234,
+     "cohen_dz": 0.40653698776025804,
+     "share_mpup_wins": 0.6911295469049138,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 6.047737897494174e-59,
+     "p_wilcoxon": 7.351737106888304e-59,
+     "p_shapiro": 1.5574408120002653e-10,
+     "mde_80": 0.018464535052026693,
+     "n_needed_for_observed_mean": 48
+    },
+    "bm25": {
+     "n": 1714,
+     "mean_diff": 0.22642227283840471,
+     "sd": 0.36064203712844645,
+     "cohen_dz": 0.6278310610744527,
+     "share_mpup_wins": 0.7336532693461307,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 7.767429780212897e-126,
+     "p_wilcoxon": 5.422109071840672e-112,
+     "p_shapiro": 2.5453385850913576e-05,
+     "mde_80": 0.024404771302238986,
+     "n_needed_for_observed_mean": 20
+    },
+    "cross-encoder": {
+     "n": 1714,
+     "mean_diff": 0.07780407306243003,
+     "sd": 0.2593960576699362,
+     "cohen_dz": 0.29994315935761223,
+     "share_mpup_wins": 0.6399739583333334,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 5.776959649606938e-34,
+     "p_wilcoxon": 4.936662014944406e-36,
+     "p_shapiro": 7.376992073965931e-17,
+     "mde_80": 0.01755342087833902,
+     "n_needed_for_observed_mean": 88
+    }
+   },
+   "per_dataset_tests": {
+    "dense": {
+     "2wikimultihopqa": {
+      "n": 182,
+      "mean_diff": 0.09379661905910062,
+      "sd": 0.3139205352620199,
+      "cohen_dz": 0.29879096307226743,
+      "share_mpup_wins": 0.6395348837209303,
+      "p_permutation": 0.00011999760004799904,
+      "p_ttest": 8.175660901211604e-05,
+      "p_wilcoxon": 0.0002058077311978225,
+      "p_shapiro": 0.005190240532927204,
+      "mde_80": 0.06519102893076707,
+      "n_needed_for_observed_mean": 88,
+      "p_holm": 0.0001999960000799984
+     },
+     "ambigqa": {
+      "n": 155,
+      "mean_diff": 0.10042122133740372,
+      "sd": 0.2076377474905818,
+      "cohen_dz": 0.48363663423944003,
+      "share_mpup_wins": 0.7266187050359713,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.2204589428619472e-08,
+      "p_wilcoxon": 9.839513818375756e-09,
+      "p_shapiro": 0.015148879318079527,
+      "mde_80": 0.046724457030752044,
+      "n_needed_for_observed_mean": 34,
+      "p_holm": 0.0001999960000799984
+     },
+     "entityquestions": {
+      "n": 186,
+      "mean_diff": 0.11798823739921108,
+      "sd": 0.24563391877449958,
+      "cohen_dz": 0.4803417947646243,
+      "share_mpup_wins": 0.7295597484276729,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 5.497454578739104e-10,
+      "p_wilcoxon": 2.860999080666858e-10,
+      "p_shapiro": 6.737444559663601e-05,
+      "mde_80": 0.05045865479867791,
+      "n_needed_for_observed_mean": 35,
+      "p_holm": 0.0001999960000799984
+     },
+     "hotpotqa": {
+      "n": 204,
+      "mean_diff": 0.09700457389951875,
+      "sd": 0.3032041869897601,
+      "cohen_dz": 0.3199315117069766,
+      "share_mpup_wins": 0.6882352941176471,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 8.479177148098365e-06,
+      "p_wilcoxon": 2.913609628510521e-06,
+      "p_shapiro": 0.00011335294944301196,
+      "mde_80": 0.059473557055659716,
+      "n_needed_for_observed_mean": 77,
+      "p_holm": 0.0001999960000799984
+     },
+     "musique": {
+      "n": 159,
+      "mean_diff": 0.1677715441719755,
+      "sd": 0.29015725194194103,
+      "cohen_dz": 0.5782090333745845,
+      "share_mpup_wins": 0.7697368421052632,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.3920851866258427e-11,
+      "p_wilcoxon": 3.106630614243167e-11,
+      "p_shapiro": 0.050653393672439186,
+      "mde_80": 0.06446717963534761,
+      "n_needed_for_observed_mean": 24,
+      "p_holm": 0.0001999960000799984
+     },
+     "nq": {
+      "n": 162,
+      "mean_diff": 0.09394411208224951,
+      "sd": 0.22634428039126286,
+      "cohen_dz": 0.4150496399549218,
+      "share_mpup_wins": 0.7248322147651006,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 4.077511992835949e-07,
+      "p_wilcoxon": 2.71329011548733e-07,
+      "p_shapiro": 0.13794465319517046,
+      "mde_80": 0.049821387790011815,
+      "n_needed_for_observed_mean": 46,
+      "p_holm": 0.0001999960000799984
+     },
+     "popqa": {
+      "n": 142,
+      "mean_diff": 0.12418919908627497,
+      "sd": 0.25221376887467867,
+      "cohen_dz": 0.4923965873884656,
+      "share_mpup_wins": 0.7364341085271318,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 3.0155792501454756e-08,
+      "p_wilcoxon": 6.05672694481047e-08,
+      "p_shapiro": 0.21769276918445635,
+      "mde_80": 0.05929641309596996,
+      "n_needed_for_observed_mean": 33,
+      "p_holm": 0.0001999960000799984
+     },
+     "squad": {
+      "n": 177,
+      "mean_diff": 0.08001260032616485,
+      "sd": 0.25768702195816373,
+      "cohen_dz": 0.31050302695940635,
+      "share_mpup_wins": 0.6273291925465838,
+      "p_permutation": 3.999920001599968e-05,
+      "p_ttest": 5.575454795829464e-05,
+      "p_wilcoxon": 8.548549947228395e-05,
+      "p_shapiro": 0.002125261907004054,
+      "mde_80": 0.05426373920046868,
+      "n_needed_for_observed_mean": 82,
+      "p_holm": 0.0001999960000799984
+     },
+     "triviaqa": {
+      "n": 192,
+      "mean_diff": 0.11700786815925672,
+      "sd": 0.27732084867608914,
+      "cohen_dz": 0.421922364358267,
+      "share_mpup_wins": 0.6521739130434783,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 2.141054634007292e-08,
+      "p_wilcoxon": 1.1556535268561021e-07,
+      "p_shapiro": 0.18024107572784237,
+      "mde_80": 0.056070665366964506,
+      "n_needed_for_observed_mean": 45,
+      "p_holm": 0.0001999960000799984
+     },
+     "webquestions": {
+      "n": 155,
+      "mean_diff": 0.1264635254438372,
+      "sd": 0.3164552718909866,
+      "cohen_dz": 0.3996252762298797,
+      "share_mpup_wins": 0.6447368421052632,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.7234153129572524e-06,
+      "p_wilcoxon": 2.489409169840547e-06,
+      "p_shapiro": 0.24722447138513326,
+      "mde_80": 0.07121152551655398,
+      "n_needed_for_observed_mean": 50,
+      "p_holm": 0.0001999960000799984
+     }
+    },
+    "cross-encoder": {
+     "2wikimultihopqa": {
+      "n": 182,
+      "mean_diff": 0.0775928543422449,
+      "sd": 0.33458847010761816,
+      "cohen_dz": 0.23190534424957224,
+      "share_mpup_wins": 0.6352941176470588,
+      "p_permutation": 0.0018599628007439852,
+      "p_ttest": 0.002047662670776442,
+      "p_wilcoxon": 0.00032400410425708763,
+      "p_shapiro": 0.0002263026870288745,
+      "mde_80": 0.06948308308814802,
+      "n_needed_for_observed_mean": 146,
+      "p_holm": 0.007439851202975941
+     },
+     "ambigqa": {
+      "n": 155,
+      "mean_diff": 0.09146010652706937,
+      "sd": 0.22210867311163784,
+      "cohen_dz": 0.4117808874626838,
+      "share_mpup_wins": 0.65,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 8.735679589538541e-07,
+      "p_wilcoxon": 1.2760079288621954e-06,
+      "p_shapiro": 0.0001708308970174448,
+      "mde_80": 0.04998083093457178,
+      "n_needed_for_observed_mean": 47,
+      "p_holm": 0.0001999960000799984
+     },
+     "entityquestions": {
+      "n": 186,
+      "mean_diff": 0.06549339784301017,
+      "sd": 0.19540089080458148,
+      "cohen_dz": 0.3351745100717554,
+      "share_mpup_wins": 0.6597222222222222,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 8.851475345098212e-06,
+      "p_wilcoxon": 6.210388271373576e-06,
+      "p_shapiro": 4.91109563460255e-10,
+      "mde_80": 0.040139676741932556,
+      "n_needed_for_observed_mean": 70,
+      "p_holm": 0.0001999960000799984
+     },
+     "hotpotqa": {
+      "n": 204,
+      "mean_diff": 0.044720307700730454,
+      "sd": 0.27284682301673635,
+      "cohen_dz": 0.1639026146842374,
+      "share_mpup_wins": 0.5952380952380952,
+      "p_permutation": 0.02013959720805584,
+      "p_ttest": 0.020202307200500907,
+      "p_wilcoxon": 0.01325765435032805,
+      "p_shapiro": 3.0745397898684487e-06,
+      "mde_80": 0.05351895452779281,
+      "n_needed_for_observed_mean": 293,
+      "p_holm": 0.04027919441611168
+     },
+     "musique": {
+      "n": 159,
+      "mean_diff": 0.04730309775079494,
+      "sd": 0.21541416833853544,
+      "cohen_dz": 0.21959139510478007,
+      "share_mpup_wins": 0.631578947368421,
+      "p_permutation": 0.00625987480250395,
+      "p_ttest": 0.00629707773267313,
+      "p_wilcoxon": 0.0023819185715330364,
+      "p_shapiro": 0.0012721222440933077,
+      "mde_80": 0.04786075065619286,
+      "n_needed_for_observed_mean": 163,
+      "p_holm": 0.01877962440751185
+     },
+     "nq": {
+      "n": 162,
+      "mean_diff": 0.12261957560278498,
+      "sd": 0.2592693604623372,
+      "cohen_dz": 0.47294279348753726,
+      "share_mpup_wins": 0.7152317880794702,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.1425125507213204e-08,
+      "p_wilcoxon": 1.0094691598657274e-08,
+      "p_shapiro": 0.2317375880788879,
+      "mde_80": 0.05706863600588281,
+      "n_needed_for_observed_mean": 36,
+      "p_holm": 0.0001999960000799984
+     },
+     "popqa": {
+      "n": 142,
+      "mean_diff": 0.07304697427763521,
+      "sd": 0.24016319208612172,
+      "cohen_dz": 0.3041555770604548,
+      "share_mpup_wins": 0.6829268292682927,
+      "p_permutation": 0.0002599948001039979,
+      "p_ttest": 0.00040348793088636653,
+      "p_wilcoxon": 6.698971078050977e-05,
+      "p_shapiro": 0.0007482868498995868,
+      "mde_80": 0.056463276814445094,
+      "n_needed_for_observed_mean": 85,
+      "p_holm": 0.0012999740005199896
+     },
+     "squad": {
+      "n": 177,
+      "mean_diff": 0.019833581651683585,
+      "sd": 0.2196226653103841,
+      "cohen_dz": 0.0903075355344293,
+      "share_mpup_wins": 0.5128205128205128,
+      "p_permutation": 0.22979540409191815,
+      "p_ttest": 0.23118566936910678,
+      "p_wilcoxon": 0.32522540064608274,
+      "p_shapiro": 0.007929499289594405,
+      "mde_80": 0.0462481460740749,
+      "n_needed_for_observed_mean": 963,
+      "p_holm": 0.22979540409191815
+     },
+     "triviaqa": {
+      "n": 192,
+      "mean_diff": 0.0943055334163006,
+      "sd": 0.26720431649995946,
+      "cohen_dz": 0.3529341690717594,
+      "share_mpup_wins": 0.6378378378378379,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 2.129323901473468e-06,
+      "p_wilcoxon": 7.978859091419756e-06,
+      "p_shapiro": 0.030381362685099115,
+      "mde_80": 0.05402523426061292,
+      "n_needed_for_observed_mean": 64,
+      "p_holm": 0.0001999960000799984
+     },
+     "webquestions": {
+      "n": 155,
+      "mean_diff": 0.1572761932357573,
+      "sd": 0.30610003586332785,
+      "cohen_dz": 0.5138065168537921,
+      "share_mpup_wins": 0.7006802721088435,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.806127764881948e-09,
+      "p_wilcoxon": 3.993417974507077e-09,
+      "p_shapiro": 0.6154710068245448,
+      "mde_80": 0.06888129998355169,
+      "n_needed_for_observed_mean": 30,
+      "p_holm": 0.0001999960000799984
+     }
+    }
+   }
+  },
+  "mpup+ (zero-shot from Qwen)": {
+   "n_queries": 1714,
+   "datasets": [
+    "2wikimultihopqa",
+    "ambigqa",
+    "entityquestions",
+    "hotpotqa",
+    "musique",
+    "nq",
+    "popqa",
+    "squad",
+    "triviaqa",
+    "webquestions"
+   ],
+   "macro": {
+    "mpup+ (target LLM)": {
+     "spearman": 0.3729458124816071,
+     "ndcg": 0.777600092190516,
+     "top1": 0.5443407234539089
+    },
+    "mpup (target LLM)": {
+     "spearman": 0.24727308058039404,
+     "ndcg": 0.6904428943882602,
+     "top1": 0.4089848308051342
+    },
+    "mpup+ (Qwen as reader)": {
+     "spearman": 0.3219861775454448,
+     "ndcg": 0.7570122719825488,
+     "top1": 0.5355892648774796
+    },
+    "mpup (Qwen as reader)": {
+     "spearman": 0.25803143644384796,
+     "ndcg": 0.6964920043485425,
+     "top1": 0.41248541423570595
+    },
+    "mpup+ (Qwen probe only)": {
+     "spearman": 0.32162139690524116,
+     "ndcg": 0.7543281939624544,
+     "top1": 0.5315052508751459
+    },
+    "mpup+ (zero-shot from Qwen)": {
+     "spearman": 0.3128847203218005,
+     "ndcg": 0.7551509632328661,
+     "top1": 0.5367561260210035
+    },
+    "probe alone (target LLM)": {
+     "spearman": 0.3668489297252459,
+     "ndcg": 0.7645872903866799,
+     "top1": 0.5326721120186698
+    },
+    "probe, shuffled labels": {
+     "spearman": 0.012925650258164528,
+     "ndcg": 0.49216901482893977,
+     "top1": 0.17736289381563594
+    },
+    "u (Qwen)": {
+     "spearman": 0.5124001693780756,
+     "ndcg": 0.787333995359786,
+     "top1": 0.6126021003500584
+    },
+    "dense": {
+     "spearman": 0.21012622744894544,
+     "ndcg": 0.6604031698552342,
+     "top1": 0.3798133022170362
+    },
+    "bm25": {
+     "spearman": 0.09498477929978383,
+     "ndcg": 0.5714187546091518,
+     "top1": 0.2852975495915986
+    },
+    "cross-encoder": {
+     "spearman": 0.24262101531064362,
+     "ndcg": 0.6882562358000648,
+     "top1": 0.396732788798133
+    }
+   },
+   "per_dataset": {
+    "2wikimultihopqa": {
+     "n_queries": 182,
+     "spearman": {
+      "mpup+ (target LLM)": 0.34445926241727687,
+      "mpup (target LLM)": 0.2623283641880922,
+      "mpup+ (Qwen as reader)": 0.32937953057783853,
+      "mpup (Qwen as reader)": 0.28607194781349315,
+      "mpup+ (Qwen probe only)": 0.31882729542064664,
+      "mpup+ (zero-shot from Qwen)": 0.2904444518255028,
+      "probe alone (target LLM)": 0.3468747254880531,
+      "probe, shuffled labels": 0.029728721346229395,
+      "u (Qwen)": 0.4709385522155913,
+      "dense": 0.23558291151873795,
+      "bm25": 0.13164158346702062,
+      "cross-encoder": 0.25178667623559364
+     }
+    },
+    "ambigqa": {
+     "n_queries": 155,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4564115333226875,
+      "mpup (target LLM)": 0.3017702823865951,
+      "mpup+ (Qwen as reader)": 0.37309659821589736,
+      "mpup (Qwen as reader)": 0.3044726728569624,
+      "mpup+ (Qwen probe only)": 0.37779677632226794,
+      "mpup+ (zero-shot from Qwen)": 0.3626642505020011,
+      "probe alone (target LLM)": 0.4529459573302839,
+      "probe, shuffled labels": -0.004648761130185295,
+      "u (Qwen)": 0.4945861297354039,
+      "dense": 0.27267537687849364,
+      "bm25": 0.13268259755992887,
+      "cross-encoder": 0.28163649168882793
+     }
+    },
+    "entityquestions": {
+     "n_queries": 186,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4491450129586273,
+      "mpup (target LLM)": 0.3470849686813048,
+      "mpup+ (Qwen as reader)": 0.41996095022492513,
+      "mpup (Qwen as reader)": 0.37415566841383946,
+      "mpup+ (Qwen probe only)": 0.4151018960295591,
+      "mpup+ (zero-shot from Qwen)": 0.42499362265412083,
+      "probe alone (target LLM)": 0.4414285415221485,
+      "probe, shuffled labels": -0.05255157397091325,
+      "u (Qwen)": 0.6620902011691179,
+      "dense": 0.3019727128257141,
+      "bm25": 0.21485961319469898,
+      "cross-encoder": 0.35446755238191496
+     }
+    },
+    "hotpotqa": {
+     "n_queries": 204,
+     "spearman": {
+      "mpup+ (target LLM)": 0.4495919475153603,
+      "mpup (target LLM)": 0.34857617048172546,
+      "mpup+ (Qwen as reader)": 0.3816923394668366,
+      "mpup (Qwen as reader)": 0.34271501030142426,
+      "mpup+ (Qwen probe only)": 0.3815241162910402,
+      "mpup+ (zero-shot from Qwen)": 0.36901461477741676,
+      "probe alone (target LLM)": 0.42701045516397085,
+      "probe, shuffled labels": 0.055401739972556895,
+      "u (Qwen)": 0.602067716299102,
+      "dense": 0.28468776556731795,
+      "bm25": 0.09031193207733497,
+      "cross-encoder": 0.3369720317661062
+     }
+    },
+    "musique": {
+     "n_queries": 159,
+     "spearman": {
+      "mpup+ (target LLM)": 0.28707138954403527,
+      "mpup (target LLM)": 0.15250279464358457,
+      "mpup+ (Qwen as reader)": 0.27316809810755366,
+      "mpup (Qwen as reader)": 0.18952393993912642,
+      "mpup+ (Qwen probe only)": 0.2766723270317752,
+      "mpup+ (zero-shot from Qwen)": 0.27313810422889173,
+      "probe alone (target LLM)": 0.2959461751866023,
+      "probe, shuffled labels": 0.039836524905848464,
+      "u (Qwen)": 0.5041924522591764,
+      "dense": 0.10539655393557812,
+      "bm25": 0.011274447835573008,
+      "cross-encoder": 0.22586500035675872
+     }
+    },
+    "nq": {
+     "n_queries": 162,
+     "spearman": {
+      "mpup+ (target LLM)": 0.37602795333541045,
+      "mpup (target LLM)": 0.22228258270325463,
+      "mpup+ (Qwen as reader)": 0.29160720307922494,
+      "mpup (Qwen as reader)": 0.22741776013676337,
+      "mpup+ (Qwen probe only)": 0.2903175784805487,
+      "mpup+ (zero-shot from Qwen)": 0.29501787368811366,
+      "probe alone (target LLM)": 0.36516165636210757,
+      "probe, shuffled labels": -0.054394977055328815,
+      "u (Qwen)": 0.446482603164756,
+      "dense": 0.19766309099697543,
+      "bm25": 0.0434428724285995,
+      "cross-encoder": 0.16898762747643992
+     }
+    },
+    "popqa": {
+     "n_queries": 142,
+     "spearman": {
+      "mpup+ (target LLM)": 0.42736024900827224,
+      "mpup (target LLM)": 0.2750858830448861,
+      "mpup+ (Qwen as reader)": 0.3675845732835753,
+      "mpup (Qwen as reader)": 0.2910602974582706,
+      "mpup+ (Qwen probe only)": 0.3660655287255756,
+      "mpup+ (zero-shot from Qwen)": 0.36891781621566366,
+      "probe alone (target LLM)": 0.419094048343397,
+      "probe, shuffled labels": 0.02276076987637444,
+      "u (Qwen)": 0.6466058974793877,
+      "dense": 0.24339537419730037,
+      "bm25": 0.14848203580542474,
+      "cross-encoder": 0.29453759900594007
+     }
+    },
+    "squad": {
+     "n_queries": 177,
+     "spearman": {
+      "mpup+ (target LLM)": 0.3072148915326634,
+      "mpup (target LLM)": 0.22875794074792702,
+      "mpup+ (Qwen as reader)": 0.2703655223305234,
+      "mpup (Qwen as reader)": 0.23506611405267408,
+      "mpup+ (Qwen probe only)": 0.27476225414466354,
+      "mpup+ (zero-shot from Qwen)": 0.26412847456569816,
+      "probe alone (target LLM)": 0.29153021955846703,
+      "probe, shuffled labels": 0.042414321019853,
+      "u (Qwen)": 0.5072085307615575,
+      "dense": 0.19035292200435858,
+      "bm25": 0.11952191943309433,
+      "cross-encoder": 0.2505319406788398
+     }
+    },
+    "triviaqa": {
+     "n_queries": 192,
+     "spearman": {
+      "mpup+ (target LLM)": 0.33732814249428716,
+      "mpup (target LLM)": 0.19641610070171134,
+      "mpup+ (Qwen as reader)": 0.283140089050463,
+      "mpup (Qwen as reader)": 0.20408582398808206,
+      "mpup+ (Qwen probe only)": 0.2872882354877346,
+      "mpup+ (zero-shot from Qwen)": 0.26020743920478745,
+      "probe alone (target LLM)": 0.32444672768492033,
+      "probe, shuffled labels": 0.049265926670543865,
+      "u (Qwen)": 0.4165735154905638,
+      "dense": 0.16613222089120633,
+      "bm25": 0.09379005688649562,
+      "cross-encoder": 0.18883455563416243
+     }
+    },
+    "webquestions": {
+     "n_queries": 155,
+     "spearman": {
+      "mpup+ (target LLM)": 0.29484774268744973,
+      "mpup (target LLM)": 0.13792571822485922,
+      "mpup+ (Qwen as reader)": 0.22986687111760937,
+      "mpup (Qwen as reader)": 0.12574512947784383,
+      "mpup+ (Qwen probe only)": 0.22785796111859982,
+      "mpup+ (zero-shot from Qwen)": 0.22032055555580896,
+      "probe alone (target LLM)": 0.3040507906125089,
+      "probe, shuffled labels": 0.0014438109466665568,
+      "u (Qwen)": 0.37325609520609976,
+      "dense": 0.10340334567377217,
+      "bm25": -0.03615926569033241,
+      "cross-encoder": 0.07259067788185211
+     }
+    }
+   },
+   "paired_ci": {
+    "mpup+ (target LLM)": [
+     -0.06004346231315601,
+     -0.07135037395110588,
+     -0.04956735178618056
+    ],
+    "mpup (target LLM)": [
+     0.06346798857739568,
+     0.05171053694458233,
+     0.07561594909163373
+    ],
+    "mpup+ (Qwen as reader)": [
+     -0.009686698962616005,
+     -0.015053052748872022,
+     -0.004729540192120295
+    ],
+    "mpup (Qwen as reader)": [
+     0.05281020199673283,
+     0.04214301241978562,
+     0.063834633554641
+    ],
+    "mpup+ (Qwen probe only)": [
+     -0.009258316631005811,
+     -0.015428671304891266,
+     -0.003035518141253479
+    ],
+    "probe alone (target LLM)": [
+     -0.053342509006168826,
+     -0.06515167651303848,
+     -0.04174696675884264
+    ],
+    "probe, shuffled labels": [
+     0.2997131956209168,
+     0.2769325395521648,
+     0.32083176613540737
+    ],
+    "u (Qwen)": [
+     -0.19976646100186587,
+     -0.21703940545865666,
+     -0.1828011624670995
+    ],
+    "dense": [
+     0.10124101080799763,
+     0.08839997906824668,
+     0.11412011007960654
+    ],
+    "bm25": [
+     0.2167355738757887,
+     0.19906141206136946,
+     0.2334744817395409
+    ],
+    "cross-encoder": [
+     0.06811737409981403,
+     0.05621813048606033,
+     0.08044160886634799
+    ]
+   },
+   "tests": {
+    "mpup+ (target LLM)": {
+     "n": 1714,
+     "mean_diff": -0.06004346231315601,
+     "sd": 0.22468441457518998,
+     "cohen_dz": -0.267234656336444,
+     "share_mpup_wins": 0.37713894592744696,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 1.5719916722836579e-27,
+     "p_wilcoxon": 1.1986382239550639e-26,
+     "p_shapiro": 2.1324665648830474e-24,
+     "mde_80": 0.015204471992631306,
+     "n_needed_for_observed_mean": 110
+    },
+    "mpup (target LLM)": {
+     "n": 1714,
+     "mean_diff": 0.06346798857739568,
+     "sd": 0.2602870841269345,
+     "cohen_dz": 0.24383840938663004,
+     "share_mpup_wins": 0.593128390596745,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 2.5706251690498637e-23,
+     "p_wilcoxon": 4.759914330267445e-26,
+     "p_shapiro": 1.728634707228529e-15,
+     "mde_80": 0.01761371694665216,
+     "n_needed_for_observed_mean": 133
+    },
+    "mpup+ (Qwen as reader)": {
+     "n": 1714,
+     "mean_diff": -0.009686698962616005,
+     "sd": 0.10852955529117542,
+     "cohen_dz": -0.08925401874749628,
+     "share_mpup_wins": 0.4846441947565543,
+     "p_permutation": 0.00019499902500487497,
+     "p_ttest": 0.0002266551507647674,
+     "p_wilcoxon": 0.005620983022093259,
+     "p_shapiro": 1.503207331188157e-32,
+     "mde_80": 0.007344232517939932,
+     "n_needed_for_observed_mean": 986
+    },
+    "mpup (Qwen as reader)": {
+     "n": 1714,
+     "mean_diff": 0.05281020199673283,
+     "sd": 0.23203099197208113,
+     "cohen_dz": 0.22759977685690866,
+     "share_mpup_wins": 0.5939024390243902,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 1.3705001499377815e-20,
+     "p_wilcoxon": 1.475311885997295e-25,
+     "p_shapiro": 3.501408419888903e-18,
+     "mde_80": 0.01570161742429786,
+     "n_needed_for_observed_mean": 152
+    },
+    "mpup+ (Qwen probe only)": {
+     "n": 1714,
+     "mean_diff": -0.009258316631005811,
+     "sd": 0.13031809633532046,
+     "cohen_dz": -0.07104398307955105,
+     "share_mpup_wins": 0.48074074074074075,
+     "p_permutation": 0.0031649841750791244,
+     "p_ttest": 0.0033127229559660708,
+     "p_wilcoxon": 0.01857235491154808,
+     "p_shapiro": 2.488827474201373e-32,
+     "mde_80": 0.008818670621234087,
+     "n_needed_for_observed_mean": 1556
+    },
+    "probe alone (target LLM)": {
+     "n": 1714,
+     "mean_diff": -0.053342509006168826,
+     "sd": 0.24151716316385283,
+     "cohen_dz": -0.22086425787462396,
+     "share_mpup_wins": 0.40040650406504064,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 1.657313315427044e-19,
+     "p_wilcoxon": 3.184096851598991e-18,
+     "p_shapiro": 8.153472187087484e-23,
+     "mde_80": 0.01634354990757801,
+     "n_needed_for_observed_mean": 161
+    },
+    "probe, shuffled labels": {
+     "n": 1714,
+     "mean_diff": 0.2997131956209168,
+     "sd": 0.460575715550303,
+     "cohen_dz": 0.6507359930230252,
+     "share_mpup_wins": 0.737061273051755,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 1.3914368568016726e-133,
+     "p_wilcoxon": 2.7117716565390415e-117,
+     "p_shapiro": 0.004236366805523866,
+     "mde_80": 0.031167317861414173,
+     "n_needed_for_observed_mean": 19
+    },
+    "u (Qwen)": {
+     "n": 1714,
+     "mean_diff": -0.19976646100186587,
+     "sd": 0.36469981397010737,
+     "cohen_dz": -0.5477558620806967,
+     "share_mpup_wins": 0.28838295388207824,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 8.900595556381928e-100,
+     "p_wilcoxon": 6.035089832730824e-91,
+     "p_shapiro": 8.283568259087367e-06,
+     "mde_80": 0.024679362463615403,
+     "n_needed_for_observed_mean": 27
+    },
+    "dense": {
+     "n": 1714,
+     "mean_diff": 0.10124101080799763,
+     "sd": 0.2824609574627482,
+     "cohen_dz": 0.3584247951200463,
+     "share_mpup_wins": 0.6727848101265823,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 5.928066736626695e-47,
+     "p_wilcoxon": 7.398693581066085e-49,
+     "p_shapiro": 4.27609793698258e-10,
+     "mde_80": 0.019114230619307056,
+     "n_needed_for_observed_mean": 62
+    },
+    "bm25": {
+     "n": 1714,
+     "mean_diff": 0.2167355738757887,
+     "sd": 0.36562228277127556,
+     "cohen_dz": 0.5927854621797579,
+     "share_mpup_wins": 0.7275449101796407,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 3.2009856191402853e-114,
+     "p_wilcoxon": 2.585933440480714e-103,
+     "p_shapiro": 5.950642077644255e-06,
+     "mde_80": 0.02474178624622603,
+     "n_needed_for_observed_mean": 23
+    },
+    "cross-encoder": {
+     "n": 1714,
+     "mean_diff": 0.06811737409981403,
+     "sd": 0.2641621612995651,
+     "cohen_dz": 0.25786196541058576,
+     "share_mpup_wins": 0.6324007807417046,
+     "p_permutation": 4.9999750001249995e-06,
+     "p_ttest": 8.399306993249685e-26,
+     "p_wilcoxon": 3.303328938506671e-30,
+     "p_shapiro": 9.586173330020882e-20,
+     "mde_80": 0.017875944758278278,
+     "n_needed_for_observed_mean": 119
+    }
+   },
+   "per_dataset_tests": {
+    "dense": {
+     "2wikimultihopqa": {
+      "n": 182,
+      "mean_diff": 0.05486154030676497,
+      "sd": 0.35088642298454426,
+      "cohen_dz": 0.15635127697483323,
+      "share_mpup_wins": 0.5930232558139535,
+      "p_permutation": 0.03629927401451971,
+      "p_ttest": 0.036294382770871284,
+      "p_wilcoxon": 0.0505626575719706,
+      "p_shapiro": 0.15474928599264115,
+      "mde_80": 0.07286763490354661,
+      "n_needed_for_observed_mean": 322,
+      "p_holm": 0.03629927401451971
+     },
+     "ambigqa": {
+      "n": 155,
+      "mean_diff": 0.08998887362350755,
+      "sd": 0.19772887076531573,
+      "cohen_dz": 0.45511246423045265,
+      "share_mpup_wins": 0.7112676056338029,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 6.988351333660876e-08,
+      "p_wilcoxon": 1.5298726271499945e-07,
+      "p_shapiro": 0.3909408275483451,
+      "mde_80": 0.044494675161279036,
+      "n_needed_for_observed_mean": 38,
+      "p_holm": 0.0001999960000799984
+     },
+     "entityquestions": {
+      "n": 186,
+      "mean_diff": 0.1230209098284068,
+      "sd": 0.24632476925360972,
+      "cohen_dz": 0.4994256574406758,
+      "share_mpup_wins": 0.7329192546583851,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.3147620131849457e-10,
+      "p_wilcoxon": 7.814078528593644e-11,
+      "p_shapiro": 0.0002468018813941219,
+      "mde_80": 0.05060057080936909,
+      "n_needed_for_observed_mean": 32,
+      "p_holm": 0.0001999960000799984
+     },
+     "hotpotqa": {
+      "n": 204,
+      "mean_diff": 0.08432684921009884,
+      "sd": 0.3100658622249544,
+      "cohen_dz": 0.27196431301721075,
+      "share_mpup_wins": 0.6358381502890174,
+      "p_permutation": 0.00015999680006399873,
+      "p_ttest": 0.00013877182613104667,
+      "p_wilcoxon": 3.807097313138536e-05,
+      "p_shapiro": 2.6064971736250585e-05,
+      "mde_80": 0.060819475915320845,
+      "n_needed_for_observed_mean": 107,
+      "p_holm": 0.0004799904001919962
+     },
+     "musique": {
+      "n": 159,
+      "mean_diff": 0.16774155029331364,
+      "sd": 0.28713525010052954,
+      "cohen_dz": 0.5841900297319305,
+      "share_mpup_wins": 0.75,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 9.148294288750991e-12,
+      "p_wilcoxon": 3.26562518712118e-11,
+      "p_shapiro": 0.2004835346215456,
+      "mde_80": 0.06379575083505139,
+      "n_needed_for_observed_mean": 23,
+      "p_holm": 0.0001999960000799984
+     },
+     "nq": {
+      "n": 162,
+      "mean_diff": 0.09735478269113822,
+      "sd": 0.23957971099254502,
+      "cohen_dz": 0.4063565411603973,
+      "share_mpup_wins": 0.7218543046357616,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 6.798675958646999e-07,
+      "p_wilcoxon": 1.8151770532300147e-07,
+      "p_shapiro": 0.013402458630250457,
+      "mde_80": 0.052734682172420784,
+      "n_needed_for_observed_mean": 48,
+      "p_holm": 0.0001999960000799984
+     },
+     "popqa": {
+      "n": 142,
+      "mean_diff": 0.12552244201836327,
+      "sd": 0.2578511540994898,
+      "cohen_dz": 0.48680193988944276,
+      "share_mpup_wins": 0.7265625,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 4.16090086188478e-08,
+      "p_wilcoxon": 5.965945046617012e-08,
+      "p_shapiro": 0.03221701002576424,
+      "mde_80": 0.06062178373121714,
+      "n_needed_for_observed_mean": 34,
+      "p_holm": 0.0001999960000799984
+     },
+     "squad": {
+      "n": 177,
+      "mean_diff": 0.07377555256133958,
+      "sd": 0.2587727766890776,
+      "cohen_dz": 0.28509781247191573,
+      "share_mpup_wins": 0.6380368098159509,
+      "p_permutation": 0.0002599948001039979,
+      "p_ttest": 0.00020443035982956598,
+      "p_wilcoxon": 0.00024711289418946777,
+      "p_shapiro": 0.0047846141956754355,
+      "mde_80": 0.05449237745747625,
+      "n_needed_for_observed_mean": 97,
+      "p_holm": 0.0005199896002079958
+     },
+     "triviaqa": {
+      "n": 192,
+      "mean_diff": 0.09407521831358111,
+      "sd": 0.2884644302429372,
+      "cohen_dz": 0.326124154143904,
+      "share_mpup_wins": 0.6324324324324324,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.0878026113843211e-05,
+      "p_wilcoxon": 2.5844845835920065e-05,
+      "p_shapiro": 0.3872633572298524,
+      "mde_80": 0.05832375248972178,
+      "n_needed_for_observed_mean": 74,
+      "p_holm": 0.0001999960000799984
+     },
+     "webquestions": {
+      "n": 155,
+      "mean_diff": 0.11691720988203677,
+      "sd": 0.3300230487202843,
+      "cohen_dz": 0.35426983156298153,
+      "share_mpup_wins": 0.6209150326797386,
+      "p_permutation": 3.999920001599968e-05,
+      "p_ttest": 1.9264391449530895e-05,
+      "p_wilcoxon": 2.1504765120279673e-05,
+      "p_shapiro": 0.9290134683668041,
+      "mde_80": 0.07426466500166667,
+      "n_needed_for_observed_mean": 63,
+      "p_holm": 0.0001999960000799984
+     }
+    },
+    "cross-encoder": {
+     "2wikimultihopqa": {
+      "n": 182,
+      "mean_diff": 0.038657775589909245,
+      "sd": 0.3823805241816589,
+      "cohen_dz": 0.10109765834084153,
+      "share_mpup_wins": 0.5813953488372093,
+      "p_permutation": 0.17611647767044658,
+      "p_ttest": 0.17429841254617273,
+      "p_wilcoxon": 0.09416330800809222,
+      "p_shapiro": 0.00957317728541479,
+      "mde_80": 0.07940792976057444,
+      "n_needed_for_observed_mean": 768,
+      "p_holm": 0.35223295534089316
+     },
+     "ambigqa": {
+      "n": 155,
+      "mean_diff": 0.08102775881317321,
+      "sd": 0.2022654805728354,
+      "cohen_dz": 0.40060102486936855,
+      "share_mpup_wins": 0.6521739130434783,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.6327337465110267e-06,
+      "p_wilcoxon": 6.785312838165935e-06,
+      "p_shapiro": 0.0005623639645768497,
+      "mde_80": 0.04551554267009438,
+      "n_needed_for_observed_mean": 49,
+      "p_holm": 0.0001999960000799984
+     },
+     "entityquestions": {
+      "n": 186,
+      "mean_diff": 0.0705260702722059,
+      "sd": 0.19665955122096226,
+      "cohen_dz": 0.35862011193630966,
+      "share_mpup_wins": 0.647887323943662,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 2.1725126983009204e-06,
+      "p_wilcoxon": 1.6872685922459272e-06,
+      "p_shapiro": 1.8365517143196044e-11,
+      "mde_80": 0.0403982335071211,
+      "n_needed_for_observed_mean": 62,
+      "p_holm": 0.0001999960000799984
+     },
+     "hotpotqa": {
+      "n": 204,
+      "mean_diff": 0.032042583011310556,
+      "sd": 0.282485001050219,
+      "cohen_dz": 0.11343109507472278,
+      "share_mpup_wins": 0.5857988165680473,
+      "p_permutation": 0.10691786164276715,
+      "p_ttest": 0.10675885459208036,
+      "p_wilcoxon": 0.03304260438748956,
+      "p_shapiro": 2.8536179272584143e-07,
+      "mde_80": 0.055409484922105255,
+      "n_needed_for_observed_mean": 611,
+      "p_holm": 0.3207535849283014
+     },
+     "musique": {
+      "n": 159,
+      "mean_diff": 0.047273103872133064,
+      "sd": 0.21703233029495322,
+      "cohen_dz": 0.21781595307891477,
+      "share_mpup_wins": 0.6756756756756757,
+      "p_permutation": 0.00629987400251995,
+      "p_ttest": 0.006721869815366271,
+      "p_wilcoxon": 0.0011676839924849392,
+      "p_shapiro": 6.788471809635677e-05,
+      "mde_80": 0.048220274110544935,
+      "n_needed_for_observed_mean": 166,
+      "p_holm": 0.0251994960100798
+     },
+     "nq": {
+      "n": 162,
+      "mean_diff": 0.12603024621167372,
+      "sd": 0.26549790146117974,
+      "cohen_dz": 0.4746939449165532,
+      "share_mpup_wins": 0.7058823529411765,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.0209630525194838e-08,
+      "p_wilcoxon": 1.0288415388294765e-08,
+      "p_shapiro": 0.15144270904740792,
+      "mde_80": 0.05843962075501324,
+      "n_needed_for_observed_mean": 35,
+      "p_holm": 0.0001999960000799984
+     },
+     "popqa": {
+      "n": 142,
+      "mean_diff": 0.07438021720972354,
+      "sd": 0.24574922661707754,
+      "cohen_dz": 0.30266714664222155,
+      "share_mpup_wins": 0.6774193548387096,
+      "p_permutation": 0.00033999320013599726,
+      "p_ttest": 0.00042956233091266893,
+      "p_wilcoxon": 2.5611529572487397e-05,
+      "p_shapiro": 0.00018463942468626449,
+      "mde_80": 0.05777657470691857,
+      "n_needed_for_observed_mean": 86,
+      "p_holm": 0.0016999660006799863
+     },
+     "squad": {
+      "n": 177,
+      "mean_diff": 0.013596533886858326,
+      "sd": 0.20143305702706019,
+      "cohen_dz": 0.06749901971170397,
+      "share_mpup_wins": 0.5448717948717948,
+      "p_permutation": 0.37099258014839703,
+      "p_ttest": 0.37040383195030036,
+      "p_wilcoxon": 0.24973916576474187,
+      "p_shapiro": 0.020876201233522053,
+      "mde_80": 0.042417777930019815,
+      "n_needed_for_observed_mean": 1723,
+      "p_holm": 0.37099258014839703
+     },
+     "triviaqa": {
+      "n": 192,
+      "mean_diff": 0.07137288357062498,
+      "sd": 0.24968518099741488,
+      "cohen_dz": 0.2858515002192458,
+      "share_mpup_wins": 0.6042780748663101,
+      "p_permutation": 0.00015999680006399873,
+      "p_ttest": 0.00010535172732388637,
+      "p_wilcoxon": 0.00025775610239461426,
+      "p_shapiro": 0.0027479380484752166,
+      "mde_80": 0.05048309313068646,
+      "n_needed_for_observed_mean": 97,
+      "p_holm": 0.0009599808003839924
+     },
+     "webquestions": {
+      "n": 155,
+      "mean_diff": 0.14772987767395684,
+      "sd": 0.3066671309626534,
+      "cohen_dz": 0.4817271326412471,
+      "share_mpup_wins": 0.6824324324324325,
+      "p_permutation": 1.999960000799984e-05,
+      "p_ttest": 1.3743263874166475e-08,
+      "p_wilcoxon": 4.5730897273704315e-08,
+      "p_shapiro": 0.7017855135183451,
+      "mde_80": 0.06900891266920745,
+      "n_needed_for_observed_mean": 34,
+      "p_holm": 0.0001999960000799984
+     }
+    }
+   }
+  }
+ },
+ "labels": {
+  "mean_u": {
+   "qwen": -0.06635901128096854,
+   "target": -0.08595383099040282
+  },
+  "nonzero": {
+   "qwen": 0.3648237125262232,
+   "target": 0.4917912972863233
+  },
+  "pearson_centred": 0.5964181744078061,
+  "within_query_spearman_test": 0.5135763109070012
+ },
+ "run_info": {
+  "gpu": "NVIDIA RTX 6000 Ada Generation",
+  "model": "mistralai/Mistral-7B-Instruct-v0.3",
+  "quantization": "none",
+  "peak_gpu_gib": 27.17,
+  "batch_size": 32,
+  "datasets": [
+   "nq",
+   "triviaqa",
+   "webquestions",
+   "entityquestions",
+   "popqa",
+   "squad",
+   "ambigqa",
+   "bamboogle",
+   "hotpotqa",
+   "2wikimultihopqa",
+   "musique"
+  ],
+  "limit": null
+ }
+}
