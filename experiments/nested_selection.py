@@ -158,5 +158,6 @@ def nested_lodo(X, y, query_ids, datasets, baselines=None, grid=GRID, n_jobs: in
         "optimism_of_oracle_selection": macro["oracle"]["spearman"] - macro["nested"]["spearman"],
         "selection_frequency": frequency,
         "final_config": {"name": final.name, "algorithm": final.algorithm, "center_by_query": final.center_by_query,
-                         "params": dict(final.params), "lodo_scores": final_scores},
+                         "params": dict(final.params), "drop_groups": list(final.drop_groups), "probe": final.probe,
+                         "smooth_label": final.smooth_label, "lodo_scores": final_scores},
     }

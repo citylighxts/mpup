@@ -72,3 +72,16 @@ def test_generation_cache_is_reused(tmp_path):
     generate_with_cache(Counting(), ["a", "b"], path)
     generate_with_cache(Counting(), ["a", "b", "c"], path)
     assert calls == [2, 1]
+
+
+def test_outer_predictions_accepts_a_custom_grid():
+    from experiments.evaluate_answer_accuracy import outer_predictions
+    from experiments.nested_selection import Config
+
+    grid = [Config("only", "ridge", True, (("alpha", 1.0),))]
+    rng = np.random.default_rng(0)
+    q = np.repeat([f"{d}:{i}" for d in "ab" for i in range(10)], 4)
+    feats = {"X": rng.normal(size=(len(q), 14)), "y": rng.normal(size=len(q)), "query_ids": q,
+             "dataset": np.array([x[0] for x in q]), "passage_ids": np.arange(len(q)).astype(str)}
+    pred = outer_predictions(feats, {"a": "only", "b": "only"}, grid=grid)
+    assert pred.shape == (len(q),) and np.isfinite(pred).all()

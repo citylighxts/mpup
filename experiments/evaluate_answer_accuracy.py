@@ -29,7 +29,8 @@ from pathlib import Path
 
 import numpy as np
 
-from experiments.nested_selection import GRID
+from experiments.nested_selection import GRID, grid_v2
+from experiments.run_multidataset import extended_matrix
 from experiments.significance_tests import describe, holm
 from src.data.utility_labeler import NO_CONTEXT_PROMPT
 from src.evaluation.metrics import relaxed_combined_score
@@ -53,20 +54,23 @@ def top_m_indices(scores, m: int) -> list[int]:
     return np.argsort(-np.asarray(scores, float), kind="stable")[:m].tolist()
 
 
-def load_utility_features(data_dir: Path) -> dict:
+def load_utility_features(data_dir: Path, extended: bool = False) -> dict:
     """Features of the eleven gold-answer datasets, with the passage ids that `load_tables` drops."""
     parts = []
     for path in sorted((data_dir / "features").glob("*.npz")):
         z = np.load(path, allow_pickle=False)
         if str(z["label_source"]) == LABEL_UTILITY:
-            parts.append({k: z[k] for k in ("X", "y", "query_ids", "passage_ids", "dataset")})
+            part = {k: z[k] for k in ("X", "y", "query_ids", "passage_ids", "dataset")}
+            if extended:
+                part["X"] = extended_matrix(data_dir, path.stem, z)
+            parts.append(part)
     return {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
 
 
-def outer_predictions(feats: dict, selected: dict[str, str]) -> np.ndarray:
+def outer_predictions(feats: dict, selected: dict[str, str], grid=GRID) -> np.ndarray:
     """MPUP scores of every row from the configuration chosen for its held-out dataset (no inner selection repeated)."""
     X, y, q, ds = feats["X"], feats["y"], feats["query_ids"], feats["dataset"]
-    configs = {c.name: c for c in GRID}
+    configs = {c.name: c for c in grid}
     pred = np.zeros(len(y))
     for name, train, test in leave_one_dataset_out(ds):
         pred[test] = configs[selected[name]].fit_predict()(X[train], y[train], X[test], q[train], q[test])
@@ -197,13 +201,17 @@ def main() -> None:
     ap.add_argument("--n-perm", type=int, default=100_000)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="results/answer_accuracy")
+    ap.add_argument("--extended", action="store_true", help="load hidden states and smooth labels (needed by the v2 grid)")
+    ap.add_argument("--grid", choices=["v1", "v2"], default="v1")
+    ap.add_argument("--combined", default="", help="comma-separated v2 variants merged into 'combined' (as in the run being reproduced)")
     args = ap.parse_args()
 
     data = Path(args.data)
     items = {it["query_id"]: it for it in json.loads((data / "items.json").read_text()) if it["gold_answers"]}
     selected = {n: d["selected"] for n, d in json.loads(Path(args.results).read_text())["nested_lodo"]["per_dataset"].items()}
-    feats = load_utility_features(data)
-    mpup = outer_predictions(feats, selected)
+    grid = GRID if args.grid == "v1" else grid_v2(tuple(n for n in args.combined.split(",") if n))
+    feats = load_utility_features(data, extended=args.extended)
+    mpup = outer_predictions(feats, selected, grid=grid)
     rows, prompts = plan_prompts(feats, mpup, items, args.m, args.seed, args.limit)
     print(f"{len({r['query_id'] for r in rows})} queries, {len(prompts)} distinct prompts", flush=True)
 

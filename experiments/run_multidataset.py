@@ -27,7 +27,7 @@ from pathlib import Path
 import numpy as np
 
 from experiments.cv_report import cv_report, columns, default_fit_predict, lodo_report, make_fit_predict, _summarise
-from experiments.nested_selection import GRID, nested_lodo
+from experiments.nested_selection import GRID, grid_v2, nested_lodo
 from src.evaluation.protocol import (
     LABEL_RAGBENCH_PROXY,
     LABEL_UTILITY,
@@ -51,12 +51,40 @@ BASELINES = {
 }
 
 
-def load_tables(data_dir: Path) -> list[dict]:
+def _joined(cache: Path, key: str, ids: tuple[np.ndarray, np.ndarray], what: str) -> np.ndarray:
+    """Rows of `cache[key]` re-ordered to the (query_id, passage_id) order of `ids`; every pair must be present."""
+    if not cache.exists():
+        raise ValueError(f"extended features need the {what} cache {cache}")
+    z = np.load(cache, allow_pickle=False)
+    row = {pair: i for i, pair in enumerate(zip(z["query_ids"].tolist(), z["passage_ids"].tolist()))}
+    try:
+        order = [row[pair] for pair in zip(ids[0].tolist(), ids[1].tolist())]
+    except KeyError as e:
+        raise ValueError(f"{what} cache {cache} has no row for pair {e.args[0]}") from None
+    return z[key][order]
+
+
+def extended_matrix(data_dir: Path, name: str, z) -> np.ndarray:
+    """[X14 | hidden states (layers flattened) | u_smooth] of one dataset, float32.
+
+    Hidden states and smooth labels are joined to the feature rows by (query_id, passage_id), so an
+    interrupted or re-ordered cache can never scramble labels; a missing pair raises. A dataset without a
+    loglik file (no gold answers) gets a NaN smooth label.
+    """
+    ids = (z["query_ids"], z["passage_ids"])
+    H = _joined(data_dir / "hidden" / f"{name}.npz", "H", ids, "hidden")
+    loglik = data_dir / "loglik" / f"{name}.npz"
+    u = _joined(loglik, "u_smooth", ids, "loglik") if loglik.exists() else np.full(len(z["y"]), np.nan)
+    return np.c_[z["X"], H.reshape(len(H), -1).astype(np.float32), u].astype(np.float32)
+
+
+def load_tables(data_dir: Path, extended: bool = False) -> list[dict]:
     tables = []
     for path in sorted((data_dir / "features").glob("*.npz")):
         z = np.load(path, allow_pickle=False)
         tables.append({
-            "X": z["X"], "y": z["y"], "query_ids": z["query_ids"],
+            "X": extended_matrix(data_dir, path.stem, z) if extended else z["X"],
+            "y": z["y"], "query_ids": z["query_ids"],
             "dataset": z["dataset"], "label_source": str(z["label_source"]),
         })
     if not tables:
@@ -102,9 +130,10 @@ def proxy_transfer_report(train: dict, targets: list[dict], seed: int = 0) -> di
     return out
 
 
-def run(data_dir: Path, repeats: int = 4, folds: int = 5, seed: int = 0, nested_grid=GRID) -> tuple[dict, dict]:
-    """Returns (report, pooled Eq. (1) table)."""
-    tables = load_tables(data_dir)
+def run(data_dir: Path, repeats: int = 4, folds: int = 5, seed: int = 0, nested_grid=GRID,
+        extended: bool = False) -> tuple[dict, dict]:
+    """Returns (report, pooled Eq. (1) table). `extended` loads hidden states and smooth labels (see `extended_matrix`)."""
+    tables = load_tables(data_dir, extended=extended)
     utility = [t for t in tables if t["label_source"] == LABEL_UTILITY]
     proxy = [t for t in tables if t["label_source"] == LABEL_RAGBENCH_PROXY]
     if len(utility) < 2:
@@ -121,7 +150,7 @@ def run(data_dir: Path, repeats: int = 4, folds: int = 5, seed: int = 0, nested_
                      "nested_cv": "leave-one-dataset-out selection over a fixed grid (see nested_lodo)"},
         "feature_names": FEATURE_NAMES,
         # Measured, not assumed: a column with no variance in the pool carries no information.
-        "constant_features": [FEATURE_NAMES[i] for i in range(pooled["X"].shape[1]) if np.ptp(pooled["X"][:, i]) == 0],
+        "constant_features": [FEATURE_NAMES[i] for i in range(len(FEATURE_NAMES)) if np.ptp(pooled["X"][:, i]) == 0],
         "datasets": dataset_statistics(tables),
         "pooled_cv": cv_report(
             pooled["X"], pooled["y"], pooled["query_ids"], baselines=BASELINES, extra_models=ablations,
@@ -137,13 +166,17 @@ def run(data_dir: Path, repeats: int = 4, folds: int = 5, seed: int = 0, nested_
     # Which feature groups matter for the predictor that will actually be deployed. The configuration
     # was selected on these same datasets, so read this as description, not as an unbiased score.
     fc = report["nested_lodo"]["final_config"]
-    selected_fp = make_fit_predict(fc["algorithm"], fc["center_by_query"], **fc["params"])
-    report["ablation_selected"] = cv_report(
-        pooled["X"], pooled["y"], pooled["query_ids"], fit_predict=selected_fp, baselines=BASELINES,
-        extra_models={f"drop_{g}": columns(selected_fp, [c for c in range(14) if c not in range(sl.start, sl.stop)])
-                      for g, sl in FEATURE_GROUPS.items()},
-        n_splits=folds, n_repeats=repeats, seed=seed,
-    )
+    selected_fp = make_fit_predict(fc["algorithm"], fc["center_by_query"], fc["drop_groups"], fc["probe"],
+                                   fc["smooth_label"], **fc["params"])
+    if fc["probe"] or fc["smooth_label"] or fc["drop_groups"]:
+        report["ablation_selected"] = None  # group ablations slice columns; a probe / smooth label / dropped group has none to slice
+    else:
+        report["ablation_selected"] = cv_report(
+            pooled["X"], pooled["y"], pooled["query_ids"], fit_predict=selected_fp, baselines=BASELINES,
+            extra_models={f"drop_{g}": columns(selected_fp, [c for c in range(14) if c not in range(sl.start, sl.stop)])
+                          for g, sl in FEATURE_GROUPS.items()},
+            n_splits=folds, n_repeats=repeats, seed=seed,
+        )
     if proxy:
         report["proxy_transfer"] = proxy_transfer_report(pool_tables(proxy), utility, seed=seed)
     return report, pooled
@@ -211,9 +244,10 @@ def to_markdown(report: dict) -> str:
           f"Left: the selected configuration ({nl['final_config']['name']}); right: the paper config. Pooled 5-fold CV over queries; "
           "the selected configuration was chosen on these datasets, so its column is descriptive.", "",
           "| group | selected config Δρ | paper config Δρ |", "|---|---|---|"]
-    ab = report["ablation_selected"]["paired_vs"]
+    ab = (report["ablation_selected"] or {}).get("paired_vs")
     for g in FEATURE_GROUPS:
-        L.append(f"| {g.upper()} | {_ci(ab[f'drop_{g}']['spearman'])} | {_ci(cv['paired_vs'][f'drop_{g}']['spearman'])} |")
+        sel = _ci(ab[f"drop_{g}"]["spearman"]) if ab else "n/a (variant configuration)"
+        L.append(f"| {g.upper()} | {sel} | {_ci(cv['paired_vs'][f'drop_{g}']['spearman'])} |")
     if "proxy_transfer" in report:
         L += ["", "## Proxy transfer (paper config trained on RAGBench annotation proxy, zero target labels)", "",
               "| target | queries | MPUP (proxy-trained) | BM25 | dense | MPUP − dense (paired) |", "|---|---|---|---|---|---|"]
@@ -231,16 +265,21 @@ def main() -> None:
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--save-checkpoint", default="checkpoints/mpup_pooled")
+    ap.add_argument("--extended", action="store_true", help="load hidden states and smooth labels (needed by the v2 grid)")
+    ap.add_argument("--grid", choices=["v1", "v2"], default="v1", help="v2 = the pre-declared variants of nested_selection.grid_v2")
+    ap.add_argument("--combined", default="", help="comma-separated v2 variants to merge into a last 'combined' entry")
     args = ap.parse_args()
 
-    report, pooled = run(Path(args.data), repeats=args.repeats, folds=args.folds, seed=args.seed)
+    grid = GRID if args.grid == "v1" else grid_v2(tuple(n for n in args.combined.split(",") if n))
+    report, pooled = run(Path(args.data), repeats=args.repeats, folds=args.folds, seed=args.seed,
+                         nested_grid=grid, extended=args.extended)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.with_suffix(".json").write_text(json.dumps(report, indent=1))
     out.with_suffix(".md").write_text(to_markdown(report))
     print(to_markdown(report))
 
-    if args.save_checkpoint:  # the deployable predictor: the config selected on all pooled Eq. (1) data
+    if args.save_checkpoint and not args.extended:  # the deployable predictor: the config selected on all pooled Eq. (1) data
         from src.predictor.mpup_predictor import MPUPPredictor
 
         cfg = report["nested_lodo"]["final_config"]

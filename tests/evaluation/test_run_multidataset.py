@@ -84,3 +84,68 @@ def test_constant_columns_are_reported(tmp_path):
     report, _ = run(tmp_path, repeats=1, folds=3, nested_grid=SMALL)
     assert report["constant_features"] == ["source_credibility"]
     assert "Constant (uninformative) features" in to_markdown(report)
+
+
+# ----------------------------------------------------------- extended layout (hidden states, smooth label)
+
+D_HIDDEN, N_LAYERS = 4, 2
+
+
+def _write_hidden(dirpath, name, seed, shuffle=False, drop_last=False, loglik=True, n_queries=30, per_query=5):
+    """hidden/<name>.npz (and loglik/) for the pairs _write() produced, optionally in another row order."""
+    z = np.load(dirpath / "features" / f"{name}.npz")
+    rng = np.random.default_rng(seed)
+    n = len(z["y"])
+    H = rng.normal(size=(n, N_LAYERS, D_HIDDEN)).astype(np.float16)
+    u = rng.normal(size=n)
+    order = rng.permutation(n) if shuffle else np.arange(n)
+    if drop_last:
+        order = order[:-1]
+    (dirpath / "hidden").mkdir(exist_ok=True)
+    np.savez(dirpath / "hidden" / f"{name}.npz", H=H[order], query_ids=z["query_ids"][order], passage_ids=z["passage_ids"][order])
+    if loglik:
+        (dirpath / "loglik").mkdir(exist_ok=True)
+        np.savez(dirpath / "loglik" / f"{name}.npz", u_smooth=u[order], query_ids=z["query_ids"][order], passage_ids=z["passage_ids"][order])
+    return H, u
+
+
+def test_load_tables_extended_joins_hidden_and_smooth_label_by_ids(data_dir):
+    H, u = _write_hidden(data_dir, "a", seed=1, shuffle=True)
+    for n in "bc":
+        _write_hidden(data_dir, n, seed=2)
+    _write_hidden(data_dir, "rag", seed=3, loglik=False)
+    tables = {str(t["dataset"][0]): t for t in load_tables(data_dir, extended=True)}
+    X = tables["a"]["X"]
+    assert X.shape == (150, 14 + N_LAYERS * D_HIDDEN + 1)
+    np.testing.assert_allclose(X[:, 14:-1], H.reshape(150, -1).astype(np.float32), atol=1e-6)  # right rows despite the shuffle
+    np.testing.assert_allclose(X[:, -1], u, atol=1e-6)
+    assert np.isnan(tables["rag"]["X"][:, -1]).all()  # a dataset without gold answers has no smooth label
+
+
+def test_load_tables_plain_is_unchanged_by_the_existence_of_hidden_files(data_dir):
+    for n in ("a", "b", "c", "rag"):
+        _write_hidden(data_dir, n, seed=1)
+    assert all(t["X"].shape[1] == 14 for t in load_tables(data_dir))
+
+
+def test_load_tables_extended_raises_on_a_missing_pair(data_dir):
+    _write_hidden(data_dir, "a", seed=1, drop_last=True)
+    with pytest.raises(ValueError, match="hidden"):
+        load_tables(data_dir, extended=True)
+
+
+def test_load_tables_extended_raises_without_a_hidden_cache(data_dir):
+    with pytest.raises(ValueError, match="hidden"):
+        load_tables(data_dir, extended=True)
+
+
+def test_run_with_a_probe_variant_on_extended_data(data_dir):
+    for i, n in enumerate(("a", "b", "c", "rag")):
+        _write_hidden(data_dir, n, seed=i + 1)
+    grid = [Config("ridge-centered", "ridge", True, (("alpha", 10.0),)),
+            Config("ridge-probe", "ridge", True, (("alpha", 10.0),), probe=True)]
+    report, _ = run(data_dir, repeats=1, folds=3, nested_grid=grid, extended=True)
+    fc = report["nested_lodo"]["final_config"]
+    assert fc["probe"] in (True, False) and "drop_groups" in fc and "smooth_label" in fc
+    assert report["ablation_selected"] is None or "paired_vs" in report["ablation_selected"]
+    assert "## Headline" in to_markdown(report)
