@@ -22,7 +22,7 @@ from dataclasses import dataclass, replace
 import numpy as np
 from joblib import Parallel, delayed
 
-from experiments.cv_report import make_fit_predict
+from experiments.cv_report import make_fit_predict, make_fitter
 from src.evaluation.protocol import bootstrap_ci, leave_one_dataset_out, per_query_scores
 
 METRICS = ("spearman", "ndcg", "top1")
@@ -37,6 +37,10 @@ class Config:
     drop_groups: tuple[str, ...] = ()
     probe: bool = False
     smooth_label: bool = False
+
+    def fitter(self):
+        return make_fitter(self.algorithm, self.center_by_query, drop_groups=self.drop_groups,
+                           probe=self.probe, smooth_label=self.smooth_label, **dict(self.params))
 
     def fit_predict(self):
         return make_fit_predict(self.algorithm, self.center_by_query, drop_groups=self.drop_groups,

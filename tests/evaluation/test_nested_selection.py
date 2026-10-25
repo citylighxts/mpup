@@ -145,3 +145,13 @@ def test_nested_lodo_runs_with_grid_v2_on_extended_toy_data():
     ds = np.concatenate([[f"d{i}"] * len(p[1]) for i, p in enumerate(parts)])
     rep = nested_lodo(X, y, q, ds, grid=grid_v2(), n_jobs=1)
     assert rep["grid"] == [c.name for c in grid_v2()] and set(rep["per_dataset"]) == {"d0", "d1", "d2"}
+
+
+def test_a_fitted_model_predicts_exactly_what_fit_predict_returns():
+    from experiments.cv_report import make_fitter
+
+    Xe, y, q, _ = _extended(4)
+    for kw in ({}, {"probe": True}, {"drop_groups": ("d2", "d4")}):
+        direct = make_fit_predict("ridge", True, alpha=1.0, **kw)(Xe[:100], y[:100], Xe[100:], q[:100], q[100:])
+        predict = make_fitter("ridge", True, alpha=1.0, **kw)(Xe[:100], y[:100], q[:100])
+        np.testing.assert_allclose(predict(Xe[100:], q[100:]), direct)
