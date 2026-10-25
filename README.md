@@ -166,6 +166,40 @@ feature extraction for all 12 datasets (9,554 pairs) took about 27 minutes in bf
 includes the labelling with the true utility. Selection-time latency, the 4-bit setting end to end
 and an 8 GB card were not measured.
 
+### Larger study and MPUP+ (hidden-state probe)
+
+700 questions per dataset (Bamboogle: all 125), top-20 BM25 candidates for the retrieved datasets,
+128,467 pairs labelled with Eq. 1 by Qwen2.5-7B-Instruct (bf16). Questions are split once by a hash
+of their id into development (70%) and test (30%); questions from the two earlier samples always go
+to development. MPUP+ adds two features to the 14: a ridge probe on M's hidden state (layer 21, last
+prompt token of the Eq. 1 prompt, centred within the query, out-of-fold inside training) and the
+score of the bge-reranker-v2-m3 cross-encoder. 24 variants were compared on development only
+([`results/big_dev.md`](results/big_dev.md)); the best, `gbr(500,d4)|u|ce|probe`, was scored once on
+the test questions ([`results/big_final.md`](results/big_final.md)), 1,641 rankable, 10 datasets:
+
+| Method | macro ρ | NDCG@10 | top-1 |
+|---|---|---|---|
+| **MPUP+** | **0.356** | 0.780 | 0.618 |
+| MPUP (14 features, paper config.) | 0.280 | 0.709 | 0.505 |
+| Cross-encoder alone | 0.260 | 0.697 | 0.490 |
+| Dense similarity alone | 0.226 | 0.659 | 0.459 |
+| BM25 alone | 0.106 | 0.557 | 0.356 |
+
+Paired over test queries: MPUP+ − dense +0.130 [+0.116, +0.144], − cross-encoder +0.095 [+0.083, +0.108],
+− MPUP +0.075 [+0.064, +0.086], all p < 1e-5 (sign-flip permutation); Holm-adjusted p ≤ 0.003 vs dense
+in every dataset. Trained without the tested dataset: 0.351. Labels + 14 features took 5.7 h (peak
+25.7 GiB); hidden states + cross-encoder 78 min. The probe reads the model that defines the label, so
+transfer to another target LLM is untested.
+
+```bash
+python -m experiments.prepare_data --corpus path/to/wiki18_100w.zip --out data/processed/big --n 700 --k 20 --no-ragbench
+python -m experiments.extract_multidataset --data data/processed/big --backend cuda
+python -m experiments.extract_extra --data data/processed/big --batch-size 16
+python -m experiments.run_big dev   --data data/processed/big --out results/big_dev
+python -m experiments.run_big final --data data/processed/big --variant "gbr(500,d4)|u|ce|probe" --out results/big_final
+python -m experiments.answer_accuracy_big --data data/processed/big --variant "gbr(500,d4)|u|ce|probe"
+```
+
 ### Earlier run — Apple Silicon, MLX Llama-3.2-3B-Instruct 4-bit
 
 Same questions and candidates, 719 rankable queries ([`results/multidataset.md`](results/multidataset.md)).

@@ -1,0 +1,21 @@
+{
+ "gpu": "NVIDIA RTX 6000 Ada Generation",
+ "model": "Qwen/Qwen2.5-7B-Instruct",
+ "quantization": "none",
+ "peak_gpu_gib": 25.67,
+ "batch_size": 32,
+ "datasets": [
+  "nq",
+  "triviaqa",
+  "webquestions",
+  "entityquestions",
+  "popqa",
+  "squad",
+  "ambigqa",
+  "bamboogle",
+  "hotpotqa",
+  "2wikimultihopqa",
+  "musique"
+ ],
+ "limit": null
+}
