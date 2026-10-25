@@ -17,21 +17,22 @@ from pathlib import Path
 
 import numpy as np
 
-from experiments.nested_selection import GRID, PAPER
+from experiments.nested_selection import GRID, PAPER, grid_v2
 from experiments.run_multidataset import BASELINES, load_tables
 from src.evaluation.protocol import LABEL_UTILITY, bootstrap_ci, per_query_scores, pool_tables
 
 METRICS = ("spearman", "ndcg", "top1")
 
 
-def _utility_tables(data_dir: Path) -> list[dict]:
-    return [t for t in load_tables(data_dir) if t["label_source"] == LABEL_UTILITY]
+def _utility_tables(data_dir: Path, extended: bool = False) -> list[dict]:
+    return [t for t in load_tables(data_dir, extended=extended) if t["label_source"] == LABEL_UTILITY]
 
 
-def run(train_dir: Path, fresh_dir: Path, config_name: str) -> dict:
-    cfg = next(c for c in GRID if c.name == config_name)
-    pooled = pool_tables(_utility_tables(train_dir))
-    fresh_tables = {str(t["dataset"][0]): t for t in _utility_tables(fresh_dir)}
+def run(train_dir: Path, fresh_dir: Path, config_name: str, grid=GRID, extended: bool = False,
+        min_gain: float | None = None) -> dict:
+    cfg = next(c for c in grid if c.name == config_name)
+    pooled = pool_tables(_utility_tables(train_dir, extended))
+    fresh_tables = {str(t["dataset"][0]): t for t in _utility_tables(fresh_dir, extended)}
     old_ids = {str(d["query_id"]) for d in json.loads((train_dir / "items.json").read_text())}
 
     models = {cfg.name: cfg, "paper config": PAPER}
@@ -58,7 +59,7 @@ def run(train_dir: Path, fresh_dir: Path, config_name: str) -> dict:
         b: {m: bootstrap_ci(cat[cfg.name][m] - cat[b][m]) for m in METRICS}
         for b in cat if b != cfg.name
     }
-    return {
+    result = {
         "config": cfg.name,
         "trained_on": sorted({str(d) for d in pooled["dataset"]}),
         "n_fresh_queries": int(len(cat[cfg.name]["spearman"])),
@@ -66,6 +67,10 @@ def run(train_dir: Path, fresh_dir: Path, config_name: str) -> dict:
         "paired_mpup_vs": paired,
         "per_dataset": per_dataset,
     }
+    if min_gain is not None:  # the pre-declared criterion: pooled gain over dense, interval excluding zero
+        gain, lo, hi = paired["dense"]["spearman"]
+        result["criterion"] = {"min_gain": min_gain, "gain": gain, "ci": [lo, hi], "met": bool(gain >= min_gain and lo > 0)}
+    return result
 
 
 def to_markdown(r: dict) -> str:
@@ -82,6 +87,10 @@ def to_markdown(r: dict) -> str:
     for b, d in r["paired_mpup_vs"].items():
         m, lo, hi = d["spearman"]
         lines.append(f"- vs {b}: {m:+.3f} [{lo:+.3f}, {hi:+.3f}]")
+    if "criterion" in r:
+        c = r["criterion"]
+        lines += ["", f"Pre-declared criterion (pooled gain over dense of at least {c['min_gain']:+.2f} with the interval above zero): "
+                  f"**criterion {'met' if c['met'] else 'not met'}** (gain {c['gain']:+.3f}, 95% CI [{c['ci'][0]:+.3f}, {c['ci'][1]:+.3f}])."]
     lines += ["", "| dataset | queries | " + " | ".join(next(iter(r["per_dataset"].values()))["spearman"]) + " |",
               "|---|---|" + "---|" * len(next(iter(r["per_dataset"].values()))["spearman"])]
     for d, v in r["per_dataset"].items():
@@ -95,8 +104,13 @@ def main() -> None:
     ap.add_argument("--fresh", default="data/processed/multidataset_seed1")
     ap.add_argument("--config", default="gbr(100,d2)-centered", help="a name from nested_selection.GRID")
     ap.add_argument("--out", default="results/fresh_questions")
+    ap.add_argument("--grid", choices=["v1", "v2"], default="v1")
+    ap.add_argument("--combined", default="", help="comma-separated v2 variants merged into 'combined'")
+    ap.add_argument("--extended", action="store_true", help="load hidden states and smooth labels")
+    ap.add_argument("--min-gain", type=float, default=None, help="pre-declared pooled gain over dense to call the criterion met")
     args = ap.parse_args()
-    r = run(Path(args.train), Path(args.fresh), args.config)
+    grid = GRID if args.grid == "v1" else grid_v2(tuple(n for n in args.combined.split(",") if n))
+    r = run(Path(args.train), Path(args.fresh), args.config, grid=grid, extended=args.extended, min_gain=args.min_gain)
     Path(args.out).with_suffix(".json").write_text(json.dumps(r, indent=1))
     Path(args.out).with_suffix(".md").write_text(to_markdown(r))
     print(to_markdown(r))

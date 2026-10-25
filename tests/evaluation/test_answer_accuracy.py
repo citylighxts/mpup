@@ -85,3 +85,21 @@ def test_outer_predictions_accepts_a_custom_grid():
              "dataset": np.array([x[0] for x in q]), "passage_ids": np.arange(len(q)).astype(str)}
     pred = outer_predictions(feats, {"a": "only", "b": "only"}, grid=grid)
     assert pred.shape == (len(q),) and np.isfinite(pred).all()
+
+
+def test_frozen_predictions_fit_on_the_training_features_only():
+    from experiments.evaluate_answer_accuracy import frozen_predictions
+    from experiments.nested_selection import Config
+
+    rng = np.random.default_rng(0)
+
+    def feats(prefix, n_q=20):
+        q = np.repeat([f"{prefix}:{i}" for i in range(n_q)], 4)
+        X = rng.normal(size=(len(q), 14))
+        return {"X": X, "y": X[:, 13] + rng.normal(0, 0.2, len(q)), "query_ids": q}
+
+    train, test = feats("t"), feats("s")
+    cfg = Config("ridge-centered", "ridge", True, (("alpha", 1.0),))
+    pred = frozen_predictions(train, test, cfg)
+    assert pred.shape == (len(test["y"]),)
+    assert np.corrcoef(pred, test["X"][:, 13])[0, 1] > 0.6  # learned on the training set, applied to the other sample

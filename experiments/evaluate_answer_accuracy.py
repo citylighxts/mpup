@@ -77,6 +77,11 @@ def outer_predictions(feats: dict, selected: dict[str, str], grid=GRID) -> np.nd
     return pred
 
 
+def frozen_predictions(train: dict, test: dict, cfg) -> np.ndarray:
+    """Scores of `test` from the configuration `cfg` fitted once on all of `train` (no selection, nothing from `test`)."""
+    return cfg.fit_predict()(train["X"], train["y"], test["X"], train["query_ids"], test["query_ids"])
+
+
 def plan_prompts(feats: dict, mpup: np.ndarray, items: dict[str, dict], ms: list[int], seed: int, limit: int | None):
     """For every query, the prompt each (method, m) would send. Returns (rows, unique prompts)."""
     rng = np.random.default_rng(seed)
@@ -201,6 +206,8 @@ def main() -> None:
     ap.add_argument("--n-perm", type=int, default=100_000)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="results/answer_accuracy")
+    ap.add_argument("--train-data", default=None, help="with --frozen-config: the sample the configuration is fitted on")
+    ap.add_argument("--frozen-config", default=None, help="a name from the grid: fit it on --train-data and rank --data with it")
     ap.add_argument("--extended", action="store_true", help="load hidden states and smooth labels (needed by the v2 grid)")
     ap.add_argument("--grid", choices=["v1", "v2"], default="v1")
     ap.add_argument("--combined", default="", help="comma-separated v2 variants merged into 'combined' (as in the run being reproduced)")
@@ -208,10 +215,14 @@ def main() -> None:
 
     data = Path(args.data)
     items = {it["query_id"]: it for it in json.loads((data / "items.json").read_text()) if it["gold_answers"]}
-    selected = {n: d["selected"] for n, d in json.loads(Path(args.results).read_text())["nested_lodo"]["per_dataset"].items()}
     grid = GRID if args.grid == "v1" else grid_v2(tuple(n for n in args.combined.split(",") if n))
     feats = load_utility_features(data, extended=args.extended)
-    mpup = outer_predictions(feats, selected, grid=grid)
+    if args.frozen_config:
+        cfg = next(c for c in grid if c.name == args.frozen_config)
+        mpup = frozen_predictions(load_utility_features(Path(args.train_data), extended=args.extended), feats, cfg)
+    else:
+        selected = {n: d["selected"] for n, d in json.loads(Path(args.results).read_text())["nested_lodo"]["per_dataset"].items()}
+        mpup = outer_predictions(feats, selected, grid=grid)
     rows, prompts = plan_prompts(feats, mpup, items, args.m, args.seed, args.limit)
     print(f"{len({r['query_id'] for r in rows})} queries, {len(prompts)} distinct prompts", flush=True)
 
