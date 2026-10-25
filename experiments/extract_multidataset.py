@@ -67,7 +67,13 @@ def item_features(item: dict, claim: str, stats: CorpusStats, dense: DenseRetrie
     return np.array(rows)
 
 
-def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, dense, stats) -> None:
+def item_hidden(item: dict, prober, layers: tuple[int, ...]) -> np.ndarray:
+    """Last-token hidden states of every candidate, (n_passages, n_layers, d); same prompt as the D5 probe."""
+    return prober.hidden_batch(item["query"], [p["text"] for p in item["passages"]], layers=layers)
+
+
+def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, dense, stats,
+                    hidden_layers: tuple[int, ...] | None = None) -> None:
     t0 = time.time()
     has_gold = all(it["gold_answers"] for it in items)
 
@@ -84,9 +90,11 @@ def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, 
         print(f"  [{name}] labelled {len(rows)} pairs in {time.time() - t0:.0f}s", flush=True)
 
     claims = hyde.generate_batch([it["query"] for it in items])
-    X, y, qids, pids = [], [], [], []
+    X, y, qids, pids, hidden = [], [], [], [], []
     for i, (it, claim) in enumerate(zip(items, claims)):
         feats = item_features(it, claim, stats, dense, prober)
+        if hidden_layers:
+            hidden.append(item_hidden(it, prober, hidden_layers))
         for p, f in zip(it["passages"], feats):
             X.append(f)
             qids.append(it["query_id"])
@@ -103,6 +111,10 @@ def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, 
         dataset=np.array([name] * len(y)),
         label_source=np.array(LABEL_UTILITY if has_gold else LABEL_RAGBENCH_PROXY),
     )
+    if hidden_layers:  # same row order as features/<name>.npz, so rows can be joined by position or by ids
+        (out / "hidden").mkdir(exist_ok=True)
+        np.savez(out / "hidden" / f"{name}.npz", H=np.concatenate(hidden).astype(np.float16),
+                 query_ids=np.array(qids), passage_ids=np.array(pids))
     print(f"{name}: {len(y)} pairs, {len(set(qids))} questions, label mean {np.mean(y):.3f}, "
           f"nonzero {100 * np.mean(np.array(y) != 0):.0f}% ({time.time() - t0:.0f}s)", flush=True)
 
@@ -117,6 +129,8 @@ def main() -> None:
     ap.add_argument("--datasets", nargs="*", default=None, help="subset of dataset names (default: all)")
     ap.add_argument("--limit", type=int, default=None, help="only the first N questions of each dataset (smoke test)")
     ap.add_argument("--batch-size", type=int, default=None, help="default 8 (mlx) or 32 (cuda)")
+    ap.add_argument("--hidden-layers", type=int, nargs="+", default=None,
+                    help="also cache last-token hidden states of these layers (-1 = final, post-norm); mlx only")
     ap.add_argument("--force", action="store_true", help="recompute datasets that already have features")
     args = ap.parse_args()
 
@@ -146,12 +160,23 @@ def main() -> None:
         prober = QuantizedProber(llm=llm, batch_size=bs)
     hyde = CUDAHyDEGenerator(llm=llm)
     dense = DenseRetriever(args.dense_model)
+    layers = tuple(args.hidden_layers) if args.hidden_layers else None
+    t_start = time.time()
     for name in names:
-        if (out / "features" / f"{name}.npz").exists() and not args.force:
+        done = (out / "features" / f"{name}.npz").exists() and (layers is None or (out / "hidden" / f"{name}.npz").exists())
+        if done and not args.force:
             print(f"{name}: features exist, skipping", flush=True)
             continue
         subset = by_name[name][: args.limit] if args.limit else by_name[name]
-        process_dataset(name, subset, out, llm, hyde, prober, dense, stats)
+        process_dataset(name, subset, out, llm, hyde, prober, dense, stats, hidden_layers=layers)
+    if args.backend == "mlx":  # what the paper reports about hardware, written next to the features
+        import mlx.core as mx
+
+        peak = mx.get_peak_memory() if hasattr(mx, "get_peak_memory") else mx.metal.get_peak_memory()
+        info = {"model": model, "peak_gib": round(peak / 2**30, 2), "batch_size": args.batch_size or 8,
+                "datasets": names, "limit": args.limit, "hidden_layers": layers, "seconds": round(time.time() - t_start)}
+        (out / "run_info_mlx.json").write_text(json.dumps(info, indent=1))
+        print(f"peak memory {info['peak_gib']} GiB (mlx)", flush=True)
     if args.backend == "cuda":  # the numbers the paper reports about hardware, written next to the features
         import torch
 
