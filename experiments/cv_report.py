@@ -23,6 +23,8 @@ from src.evaluation.protocol import (
     leave_one_dataset_out,
     per_query_scores,
 )
+from src.features.concatenate import FEATURE_DIM, FEATURE_GROUPS, split_extended
+from src.predictor.hidden_probe import HiddenProbe
 from src.predictor.mpup_predictor import MPUPPredictor
 
 # fit_predict(X_train, y_train, X_test, groups_train, groups_test) -> scores for X_test.
@@ -31,12 +33,39 @@ FitPredict = Callable[..., np.ndarray]
 METRICS = ("spearman", "ndcg", "top1")
 
 
-def make_fit_predict(algorithm: str = "xgboost", center_by_query: bool = False, **params) -> FitPredict:
-    """A fit_predict for one predictor configuration."""
+def make_fit_predict(
+    algorithm: str = "xgboost", center_by_query: bool = False,
+    drop_groups: tuple[str, ...] = (), probe: bool = False, smooth_label: bool = False, **params,
+) -> FitPredict:
+    """A fit_predict for one predictor configuration.
+
+    Matrices may be plain (14 columns) or extended ([X14 | hidden states | u_smooth], see
+    `src.features.concatenate.split_extended`). `drop_groups` removes feature groups (e.g. "d2", "d4"),
+    `probe` stacks an out-of-fold ridge probe on the hidden states as one more feature, and `smooth_label`
+    trains on `u_smooth` instead of the label; scoring is always against the label passed in `y`.
+    """
+    dropped = {c for g in drop_groups for c in range(FEATURE_GROUPS[g].start, FEATURE_GROUPS[g].stop)}
+    keep = [c for c in range(FEATURE_DIM) if c not in dropped]
+
     def fit_predict(X_tr, y_tr, X_te, g_tr=None, g_te=None):
+        A_tr, H_tr, s_tr = split_extended(X_tr)
+        A_te, H_te, _ = split_extended(X_te)
+        if dropped:
+            A_tr, A_te = A_tr[:, keep], A_te[:, keep]
+        target = y_tr
+        if smooth_label:
+            if np.isnan(s_tr).any():
+                raise ValueError("smooth_label needs the extended matrix with a u_smooth column for every training row")
+            target = s_tr
+        if probe:
+            if H_tr.shape[1] == 0:
+                raise ValueError("probe needs the extended matrix with hidden states")
+            hp = HiddenProbe().fit(H_tr, target, g_tr)
+            A_tr = np.c_[A_tr, hp.oof_scores(H_tr, target, g_tr)]
+            A_te = np.c_[A_te, hp.predict(H_te, g_te)]
         model = MPUPPredictor(algorithm=algorithm, center_by_query=center_by_query, **params)
-        model.fit(X_tr, y_tr, groups=g_tr)
-        return model.predict(X_te, groups=g_te)
+        model.fit(A_tr, target, groups=g_tr)
+        return model.predict(A_te, groups=g_te)
     return fit_predict
 
 

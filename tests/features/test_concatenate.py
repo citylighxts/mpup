@@ -52,3 +52,22 @@ def test_no_probe_result_gives_zero_d5():
         vec = build_feature_vector("q", make_passage(), probe_result=None)
     d5_slice = FEATURE_GROUPS["d5"]
     np.testing.assert_array_equal(vec[d5_slice], np.zeros(3))
+
+
+# ----------------------------------------------------------- extended column layout
+
+from src.features.concatenate import split_extended
+
+
+def test_split_extended_roundtrip():
+    A, H, u = np.random.default_rng(0).normal(size=(5, FEATURE_DIM)), np.random.default_rng(1).normal(size=(5, 6)), np.arange(5.0)
+    a, h, s = split_extended(np.c_[A, H, u])
+    np.testing.assert_array_equal(a, A)
+    np.testing.assert_array_equal(h, H)
+    np.testing.assert_array_equal(s, u)
+
+
+def test_split_extended_of_a_plain_matrix_has_no_hidden_part_and_no_smooth_label():
+    A = np.ones((4, FEATURE_DIM))
+    a, h, s = split_extended(A)
+    assert a.shape == (4, FEATURE_DIM) and h.shape == (4, 0) and np.isnan(s).all() and s.shape == (4,)

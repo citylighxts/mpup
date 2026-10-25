@@ -17,6 +17,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import Ridge
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
@@ -38,6 +39,36 @@ def center_by_group(values: np.ndarray, groups=None) -> np.ndarray:
     return values - means[idx]
 
 
+class PairwiseLogistic:
+    """Linear RankNet: logistic regression on the feature difference of two candidates of one query.
+
+    Stands in for XGBoost's `rank:pairwise`, which segfaults under pytest on Python 3.14 (see the module
+    docstring), so a path that cannot be tested would otherwise be the one that gets run.
+    """
+
+    def __init__(self, C: float = 1.0):
+        self.C = C
+
+    def fit(self, X: np.ndarray, y: np.ndarray, qid: np.ndarray) -> "PairwiseLogistic":
+        diffs, signs = [], []
+        for g in np.unique(qid):
+            idx = np.flatnonzero(qid == g)
+            i, j = np.meshgrid(idx, idx, indexing="ij")
+            keep = y[i] > y[j]  # every ordered pair whose first member has the higher label
+            diffs.append(X[i[keep]] - X[j[keep]])
+        D = np.concatenate(diffs) if diffs else np.empty((0, X.shape[1]))
+        if len(D) == 0:  # no query has two candidates with different labels: nothing to learn from
+            self.coef_ = np.zeros(X.shape[1])
+            return self
+        D = np.concatenate([D, -D])
+        signs = np.r_[np.ones(len(D) // 2), np.zeros(len(D) // 2)]
+        self.coef_ = LogisticRegression(C=self.C, fit_intercept=False).fit(D, signs).coef_[0]
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return X @ self.coef_
+
+
 class MPUPPredictor:
     def __init__(self, algorithm: str = "xgboost", center_by_query: bool = False, **kwargs):
         self.algorithm = algorithm
@@ -51,6 +82,8 @@ class MPUPPredictor:
                 subsample=kwargs.get("subsample", 0.8),
                 random_state=kwargs.get("random_state", 42),
             )
+        elif algorithm == "rank":  # pairwise ranking inside each query: only the order of the candidates matters
+            self.model = PairwiseLogistic(C=kwargs.get("C", 1.0))
         elif algorithm == "ridge":
             self.model = Ridge(alpha=kwargs.get("alpha", 100.0))
         elif algorithm == "mlp":
@@ -73,6 +106,11 @@ class MPUPPredictor:
                 raise ValueError("center_by_query needs `groups`: the query id of every training row")
             X, y = center_by_group(X, groups), center_by_group(y, groups)
         X_scaled = self.scaler.fit_transform(X)
+        if self.algorithm == "rank":
+            if groups is None:
+                raise ValueError("the ranking objective needs `groups`: the query id of every training row")
+            self.model.fit(X_scaled, y, _group_index(groups, len(y)))
+            return
         self.model.fit(X_scaled, y)
 
     def predict(self, X: np.ndarray, groups=None) -> np.ndarray:

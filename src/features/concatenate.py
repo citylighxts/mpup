@@ -28,6 +28,18 @@ FEATURE_GROUPS: dict[str, slice] = {
 }
 
 
+def split_extended(X: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Split a feature matrix into (X14, hidden states, smooth label).
+
+    The extended layout is [X14 | hidden states, flattened | u_smooth] (see `run_multidataset.load_tables`);
+    a plain matrix (14 columns or fewer) has no hidden part (n, 0) and no smooth label (NaN).
+    """
+    X = np.asarray(X)
+    if X.shape[1] <= FEATURE_DIM:  # plain matrix (ablations pass fewer than 14 columns)
+        return X, np.empty((len(X), 0)), np.full(len(X), np.nan)
+    return X[:, :FEATURE_DIM], X[:, FEATURE_DIM:-1], X[:, -1]
+
+
 def build_feature_vector(
     query: str,
     passage: RetrievedPassage,

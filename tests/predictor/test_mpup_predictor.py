@@ -109,3 +109,18 @@ def test_save_and_load_keep_the_algorithm_and_the_centering_flag(tmp_path):
     loaded = MPUPPredictor.load(tmp_path / "m")
     assert loaded.algorithm == "ridge" and loaded.center_by_query is True
     np.testing.assert_allclose(pred.predict(X, groups=g), loaded.predict(X, groups=g))
+
+
+# ------------------------------------------------------------- ranking objective
+
+
+def test_rank_algorithm_handles_single_candidate_and_constant_queries():
+    rng = np.random.default_rng(0)
+    q = np.array(["a"] * 4 + ["b"] + ["c"] * 3 + ["d"] * 4)  # b has one candidate, c has equal labels
+    X = rng.normal(size=(len(q), 5))
+    y = np.where(q == "c", 0.5, X[:, 0] + rng.normal(0, 0.1, len(q)))
+    pred = MPUPPredictor(algorithm="rank", center_by_query=True, n_estimators=20, max_depth=2)
+    pred.fit(X, y, groups=q)
+    out = pred.predict(X, groups=q)
+    assert out.shape == (len(q),) and np.isfinite(out).all()
+    assert np.corrcoef(out[q == "a"], X[q == "a", 0])[0, 1] > 0.5  # it learned the ordering feature

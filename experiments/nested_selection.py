@@ -17,7 +17,7 @@ claimed; the gap to `nested` is the optimism that a non-nested comparison would 
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -34,9 +34,13 @@ class Config:
     algorithm: str
     center_by_query: bool
     params: tuple = ()
+    drop_groups: tuple[str, ...] = ()
+    probe: bool = False
+    smooth_label: bool = False
 
     def fit_predict(self):
-        return make_fit_predict(self.algorithm, self.center_by_query, **dict(self.params))
+        return make_fit_predict(self.algorithm, self.center_by_query, drop_groups=self.drop_groups,
+                                probe=self.probe, smooth_label=self.smooth_label, **dict(self.params))
 
 
 def _grid() -> list[Config]:
@@ -53,6 +57,31 @@ def _grid() -> list[Config]:
 
 GRID = _grid()
 PAPER = next(c for c in GRID if c.name == "gbr(200,d5)-raw")  # the configuration stated in the paper
+
+
+def grid_v2(combined: tuple[str, ...] = ()) -> list[Config]:
+    """The pre-declared variants: the frozen configuration and one change at a time (plus their union if asked).
+
+    `combined` names the variants to merge into a last entry called "combined"; which ones is decided from the
+    one-at-a-time run (see the plan), never from held-out data of the confirmation sample.
+    """
+    base = Config("base", "xgboost", True, (("n_estimators", 100), ("max_depth", 2), ("learning_rate", 0.05)))
+    variants = {
+        "base-noD2D4": replace(base, name="base-noD2D4", drop_groups=("d2", "d4")),
+        "base+probe": replace(base, name="base+probe", probe=True),
+        "base-rank": replace(base, name="base-rank", algorithm="rank"),
+        "base+smooth": replace(base, name="base+smooth", smooth_label=True),
+    }
+    grid = [base, *variants.values()]
+    if combined:
+        picked = [variants[n] for n in combined]
+        grid.append(replace(
+            base, name="combined",
+            drop_groups=tuple(g for g in ("d2", "d4") if any(c.drop_groups for c in picked)),
+            probe=any(c.probe for c in picked), smooth_label=any(c.smooth_label for c in picked),
+            algorithm="rank" if any(c.algorithm == "rank" for c in picked) else base.algorithm,
+        ))
+    return grid
 
 
 def _mean_rho(y, pred, q) -> float:
