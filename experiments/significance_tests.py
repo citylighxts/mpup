@@ -163,7 +163,8 @@ def from_results(results: Path, fresh: Path | None = None) -> dict:
     out = {"per_dataset": rows, "pooled": pooled, "method": "paired t-test statistic from the 95% bootstrap interval (t with n-1 df)"}
     full = json.loads(results.read_text())
     ablation = {}  # Table V: one family of five groups per configuration, Holm within the column
-    for label, paired in (("selected", full["ablation_selected"]["paired_vs"]), ("reference", full["pooled_cv"]["paired_vs"])):
+    selected = full.get("ablation_selected")  # None for a probe / smooth-label / dropped-group configuration
+    for label, paired in ((("selected", selected["paired_vs"]),) if selected else ()) + (("reference", full["pooled_cv"]["paired_vs"]),):
         cells = {g: p_from_interval(*paired[f"drop_{g}"]["spearman"], nested["n_queries"]) for g in ("d1", "d2", "d3", "d4", "d5")}
         for g, a_ in zip(cells, holm([c["p"] for c in cells.values()])):
             cells[g]["p_holm"] = a_

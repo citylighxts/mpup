@@ -50,3 +50,19 @@ def test_p_from_interval_with_n_uses_the_t_distribution_and_is_more_conservative
     t_based = p_from_interval(0.1, 0.02, 0.18, n=20)["p"]
     assert t_based > z_based
     assert p_from_interval(0.1, 0.02, 0.18, n=100000)["p"] == pytest.approx(z_based, abs=1e-4)
+
+
+def test_from_results_accepts_a_run_without_the_selected_config_ablation(tmp_path):
+    import json
+
+    from experiments.significance_tests import from_results
+
+    ci = lambda m: [m, m - 0.05, m + 0.05]  # noqa: E731
+    paired = {f"drop_{g}": {"spearman": ci(0.01)} for g in ("d1", "d2", "d3", "d4", "d5")}
+    run = {"nested_lodo": {"n_queries": 100, "pooled_paired_vs": {"dense": {"spearman": ci(0.08)}},
+                           "per_dataset": {"a": {"n_queries": 50, "paired_vs": {"dense": {"spearman": ci(0.08)}}}}},
+           "ablation_selected": None, "pooled_cv": {"paired_vs": paired}}
+    path = tmp_path / "r.json"
+    path.write_text(json.dumps(run))
+    out = from_results(path)
+    assert out["pooled"]["p"] < 0.01 and set(out["ablation"]) == {"reference"}
