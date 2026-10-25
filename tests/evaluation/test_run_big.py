@@ -37,3 +37,13 @@ def test_every_variant_runs():
     tr, te = np.arange(200), np.arange(200, 300)
     for v in ("gbr(100,d2)|u", "gbr(100,d2)|mix|ce|probe", "gbr(100,d2)|soft|probe"):
         assert run_big.fit_predict(d, tr, te, v).shape == (100,)
+
+
+def test_shuffled_probe_control_carries_no_signal():
+    from experiments.run_cross_llm import shuffled_probe
+
+    d = _toy(n_q=200)
+    tr, te = np.arange(700), np.arange(700, 1000)
+    # a single fit points in a random direction of the 8-dim hidden space; averaged over shuffles it is ~0
+    r = [np.corrcoef(shuffled_probe(d, tr, te, seed), d["y"][te])[0, 1] for seed in range(20)]
+    assert abs(np.mean(r)) < 0.2

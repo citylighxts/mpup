@@ -30,14 +30,15 @@ def main() -> None:
     ap.add_argument("--variant", required=True)
     ap.add_argument("--seen", nargs="*", default=["data/processed/multidataset", "data/processed/multidataset_seed1"])
     ap.add_argument("--m", type=int, nargs="+", default=[1, 3])
-    ap.add_argument("--model", default="Qwen/Qwen2.5-7B-Instruct")
+    ap.add_argument("--model", default="Qwen/Qwen2.5-7B-Instruct", help="answering model; must be the one that labelled --data")
+    ap.add_argument("--layer", type=int, default=run_big.LAYER, help="probe layer (24 for the 32-layer Mistral-7B)")
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--n-perm", type=int, default=100_000)
     ap.add_argument("--out", default="results/big_answer_accuracy")
     args = ap.parse_args()
 
     data = Path(args.data)
-    d = run_big.load(data)
+    d = run_big.load(data, args.layer)
     test_mask = run_big.split(d["q"], run_big.seen_ids([Path(p) for p in args.seen]))
     dev, te = np.flatnonzero(~test_mask), np.flatnonzero(test_mask)
     scores = {"mpup+": run_big.fit_predict(d, dev, te, args.variant),

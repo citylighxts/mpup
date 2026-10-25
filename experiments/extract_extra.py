@@ -85,6 +85,7 @@ def main() -> None:
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--ce-model", default=DEFAULT_CE)
     ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--layers", type=int, nargs="+", default=list(LAYERS), help="about 1/2 and 3/4 of the depth")
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
 
@@ -121,15 +122,15 @@ def main() -> None:
 
         uq = list(dict.fromkeys(qids))
         base_lp, base_h = score_gold(llm, [NO_CONTEXT_PROMPT.format(query=items_ds[q]["query"]) for q in uq],
-                                     [str(items_ds[q]["gold_answers"][0]) for q in uq], batch_size=args.batch_size)
+                                     [str(items_ds[q]["gold_answers"][0]) for q in uq], args.layers, args.batch_size)
         pos = {q: i for i, q in enumerate(uq)}
         qi = np.array([pos[q] for q in qids])
         ctx_lp, ctx_h = score_gold(llm, [WITH_CONTEXT_PROMPT.format(query=q, passage=p) for q, p in zip(queries, passages)],
-                                   golds, batch_size=args.batch_size)
+                                   golds, args.layers, args.batch_size)
         ce_s = cross_encoder_scores(ce, ce_tok, queries, passages)
         out = {"query_ids": z["query_ids"], "passage_ids": z["passage_ids"],
                "soft": ctx_lp - base_lp[qi], "ctx_logprob": ctx_lp, "base_logprob": base_lp[qi], "ce": ce_s}
-        for L in LAYERS:
+        for L in args.layers:
             out[f"hidden_{L}"] = ctx_h[L]
             out[f"hidden_q_{L}"] = base_h[L][qi]
         np.savez(data / "extra" / path.name, **out)

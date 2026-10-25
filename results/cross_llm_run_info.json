@@ -1,0 +1,21 @@
+{
+ "gpu": "NVIDIA RTX 6000 Ada Generation",
+ "model": "mistralai/Mistral-7B-Instruct-v0.3",
+ "quantization": "none",
+ "peak_gpu_gib": 27.17,
+ "batch_size": 32,
+ "datasets": [
+  "nq",
+  "triviaqa",
+  "webquestions",
+  "entityquestions",
+  "popqa",
+  "squad",
+  "ambigqa",
+  "bamboogle",
+  "hotpotqa",
+  "2wikimultihopqa",
+  "musique"
+ ],
+ "limit": null
+}
