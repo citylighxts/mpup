@@ -6,8 +6,7 @@ Reads the single evaluation of the larger study (results/big_final.json, trained
 of all datasets), so the figure matches Table VII (`tab:big`) of the paper. Per dataset, the circle is the mean
 paired difference in within-query Spearman correlation r_s between MPUP and dense similarity and the line is its 95% t
 interval over the test queries (mean +- t * sd / sqrt(n)); a filled circle means the interval excludes zero.
-The open square is the same difference for MPUP without the additions (the 14 features), a point without an
-interval because only per-dataset means are stored for it. The last row is the difference over all rankable test
+The last row is the difference over all rankable test
 queries together with its 95% percentile bootstrap interval.
 """
 import json
@@ -68,7 +67,6 @@ def build() -> str:
         L.append(f"  \\node[anchor=east, inner sep=2pt] at (0,{y:.3f}) {{{label}}};")
         L.append(f"  \\draw[thick] ({x(lo):.3f},{y:.3f}) -- ({x(hi):.3f},{y:.3f});")
         L.append(f"  \\draw[{marker}, thick] ({x(mean):.3f},{y:.3f}) circle (0.07);")
-        L.append(f"  \\draw[fill=white, thick] ({x(old) - 0.06:.3f},{y - 0.06:.3f}) rectangle ({x(old) + 0.06:.3f},{y + 0.06:.3f});")
     mean, lo, hi = pooled
     L.append(f"  \\draw[gray!70, thin] ({x(X_MIN):.3f},{y_pooled + ROW * 0.55:.3f}) -- ({x(X_MAX):.3f},{y_pooled + ROW * 0.55:.3f});")
     L.append(f"  \\node[anchor=east, inner sep=2pt] at (0,{y_pooled:.3f}) {{\\textbf{{All ({n_all})}}}};")
