@@ -43,3 +43,29 @@ class UtilityJudge:
                 last = logits[r, len(ids[i]) - 1].float()
                 out[i] = float(last[self.yes] - last[self.no])
         return out
+
+
+class MLXUtilityJudge:
+    """The same judgment for an `MLXLLM` (Apple Silicon): logit(Yes) - logit(No) at the last real prompt token."""
+
+    def __init__(self, llm, batch_size: int = 8):
+        self.llm, self.batch_size = llm, batch_size
+        tok = llm.tokenizer
+        self.yes, self.no = tok.encode("Yes", add_special_tokens=False)[0], tok.encode("No", add_special_tokens=False)[0]
+
+    def score(self, query: str, passages: list[str]) -> np.ndarray:
+        import mlx.core as mx
+
+        ids = [self.llm._encode(JUDGE_PROMPT.format(query=query, passage=p)) for p in passages]
+        out = np.zeros(len(ids), np.float32)
+        order = np.argsort([len(i) for i in ids])
+        for s in range(0, len(order), self.batch_size):
+            idx = order[s : s + self.batch_size]
+            m = max(len(ids[i]) for i in idx)
+            batch = np.zeros((len(idx), m), dtype=np.int32)  # padding on the right keeps the real positions
+            for r, i in enumerate(idx):
+                batch[r, : len(ids[i])] = ids[i]
+            logits = self.llm.model(mx.array(batch))
+            last = mx.stack([logits[r, len(ids[i]) - 1] for r, i in enumerate(idx)]).astype(mx.float32)
+            out[idx] = np.array(last[:, self.yes] - last[:, self.no])
+        return out

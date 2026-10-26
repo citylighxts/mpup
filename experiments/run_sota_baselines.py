@@ -101,16 +101,21 @@ def cmd_cd(args) -> None:
     preds = {"MPUP": run_big.fit_predict(d, dev, te, args.variant),
              "GainRAG-style": z["gain"], "LLM judgment": z["judge"]}
     preds.update({"Cross-encoder": d["ce"][te], "Dense": d["X"][te, 1], "BM25": d["X"][te, 0]})
-    table = per_query_table(d["y"][te], d["q"][te], preds)
+    write_cd_report(per_query_table(d["y"][te], d["q"][te], preds), args.alpha, args.out)
+
+
+def write_cd_report(table: dict[str, np.ndarray], alpha: float, out: str) -> dict:
+    """Friedman test, Nemenyi CD and the diagram for per-query r_s of several methods; writes .json, .tex and .npz."""
     n = len(next(iter(table.values())))
-    ranks, crit = cd.average_ranks(table), cd.nemenyi_cd(len(table), n, args.alpha)
-    report = {"n_queries": n, "alpha": args.alpha, "friedman_p": cd.friedman_pvalue(table), "cd": crit,
+    ranks, crit = cd.average_ranks(table), cd.nemenyi_cd(len(table), n, alpha)
+    report = {"n_queries": n, "alpha": alpha, "friedman_p": cd.friedman_pvalue(table), "cd": crit,
               "average_rank": ranks, "mean_r_s": {k: float(v.mean()) for k, v in table.items()},
               "not_significantly_different": cd.cliques(ranks, crit)}
-    Path(args.out).with_suffix(".json").write_text(json.dumps(report, indent=1))
-    Path(args.out).with_suffix(".tex").write_text(cd.to_tikz(ranks, crit))
-    np.savez(Path(args.out).with_suffix(".npz"), **table)
+    Path(out).with_suffix(".json").write_text(json.dumps(report, indent=1))
+    Path(out).with_suffix(".tex").write_text(cd.to_tikz(ranks, crit))
+    np.savez(Path(out).with_suffix(".npz"), **table)
     print(json.dumps(report, indent=1))
+    return report
 
 
 def main() -> None:
