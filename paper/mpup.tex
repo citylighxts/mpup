@@ -121,7 +121,7 @@ MPUP is compared to eight previous studies which were based on six criteria, pre
         Tian et al.~\cite{tian2026} & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\times$ & $\times$ & $\times$ \\
         LURE-RAG~\cite{chandra2026} & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\times$ & $\checkmark$ & $\times$ \\
         RRPO~\cite{wu2026} & $\times$ & $\times$ & $\checkmark$ & $\times$ & $\times$ & $\checkmark$ \\
-        \textbf{MPUP (ours)} & $\checkmark$ & $\checkmark$ & $\sim$ & $\sim$ & $\sim$ & $\times$ \\
+        \textbf{MPUP (proposed)} & $\checkmark$ & $\checkmark$ & $\sim$ & $\sim$ & $\sim$ & $\times$ \\
         \bottomrule
         \multicolumn{7}{p{0.93\columnwidth}}{\footnotesize $\sim$: only partly met or partly established (Section~IV). C1: met in 4-bit precision, where the extraction of the features and hidden states ran end to end on one Apple M5 laptop (24 GiB of unified memory) with a peak of 6.4 GiB of MLX memory; the cross-encoder was not run there, and 8 GB cards were not tested. In bfloat16 on a GPU the peak is 20.8 to 25.7 GiB. C3: one short generation per query, two forward passes of $M$ per passage (probing and hidden state), and one cross-encoder pass, but no answer generation per passage. C4: MPUP was not compared with a method that probes the target LLM. C5: transfer tested for one pair of LLMs only (Qwen2.5-7B to Mistral-7B, Section~\ref{sec:crossllm}). C6: not met, since the utility labels come from running the LLM.} \\
     \end{tabular}
