@@ -376,6 +376,36 @@ prompt = pipeline.build_rag_prompt(query, ranked)
 `rank` treats the passages as the candidates of **one** query. Features from `pipeline.rank` equal
 the training matrix exactly (checked on five queries from two datasets: max difference 0).
 
+### MPUP+ (the variant of the larger study)
+
+MPUP+ adds a cross-encoder score and a hidden-state probe score to the 14 features (16 in total, in this
+order). `MPUPPlusPredictor` carries the regressor (`gbr(500,d4)`, centred) and the probe; its predictions equal
+those of `experiments.run_big` for the same training and test rows (tested). The hidden state is that of layer
+21 of the utility prompt of Eq. (1), read from a Hugging Face model (`QuantizedLLM`), so this path needs a GPU.
+
+```python
+from src.data.llm_backend import QuantizedLLM
+from src.predictor.mpup_plus import MPUPPlusPredictor
+from src.probing.cross_encoder import CrossEncoderScorer
+from src.probing.hidden_state import HiddenStateExtractor
+
+# fit once on cached features: X14 (n, 14), ce (n,), H (n, 3584) from experiments.extract_extra, the Eq. (1) utility u
+model = MPUPPlusPredictor().fit(X14, ce, H, u, query_ids)
+model.save("checkpoints/mpup_plus")
+
+llm = QuantizedLLM("Qwen/Qwen2.5-7B-Instruct")
+pipeline = MPUPPipeline(
+    predictor=MPUPPlusPredictor.load("checkpoints/mpup_plus"),
+    prober=QuantizedProber(llm=llm), hyde_generator=CUDAHyDEGenerator(llm=llm),
+    dense_retriever=DenseRetriever("intfloat/multilingual-e5-large"),
+    cross_encoder=CrossEncoderScorer(),                   # BAAI/bge-reranker-v2-m3
+    hidden_extractor=HiddenStateExtractor(llm, layer=21),
+    top_m=3,
+)
+```
+
+`rank` returns 16-column feature vectors for MPUP+ and refuses to run without both extra models.
+
 ---
 
 ## Requirements

@@ -96,3 +96,59 @@ def test_explicit_threshold_drops_passages_at_or_below_it(sample_passages):
     pipeline = MPUPPipeline(predictor=MagicMock(), top_m=5, utility_threshold=0.0)
     prompt = pipeline.build_rag_prompt("query", ranked)
     assert "[1]" in prompt and "[2]" not in prompt
+
+
+# ------------------------------------------------------------------------ MPUP+
+
+from src.predictor.mpup_plus import MPUPPlusPredictor
+
+
+class _FakeCrossEncoder:
+    def score(self, query, passages):
+        return np.array([0.9, 0.2, -1.0][: len(passages)])
+
+
+class _FakeHidden:
+    def hidden_batch(self, query, passages):
+        rng = np.random.default_rng(len(query))
+        return rng.normal(size=(len(passages), 12)).astype(np.float32)
+
+
+def _plus_model():
+    rng = np.random.default_rng(0)
+    q = np.repeat([f"q{i}" for i in range(30)], 5)
+    X = rng.normal(size=(len(q), 14))
+    ce = rng.normal(size=len(q))
+    H = rng.normal(size=(len(q), 12)).astype(np.float32)
+    y = X[:, 13] + 0.5 * ce + 0.3 * H[:, 0] + rng.normal(0, 0.1, len(q))
+    return MPUPPlusPredictor(n_estimators=20, max_depth=2).fit(X, ce, H, y, q)
+
+
+def test_mpup_plus_appends_the_cross_encoder_and_probe_scores_to_the_14_features(sample_passages):
+    model = _plus_model()
+    pipeline = MPUPPipeline(predictor=model, prober=MockProber(seed=0), cross_encoder=_FakeCrossEncoder(),
+                            hidden_extractor=_FakeHidden(), top_m=2)
+    query = "What is the capital of France?"
+    with patch("src.features.d4_faithfulness._get_nli", return_value=_mock_nli()):
+        ranked = pipeline.rank(query, sample_passages)
+    by_id = {r.passage.doc_id: r for r in ranked}
+    H = _FakeHidden().hidden_batch(query, [p.text for p in sample_passages])
+    probe = model.probe.predict(H)
+    X16 = np.stack([by_id[p.doc_id].feature_vector for p in sample_passages])  # in the order of the candidates
+    assert X16.shape == (3, 16)
+    np.testing.assert_allclose(X16[:, 14], [0.9, 0.2, -1.0])
+    np.testing.assert_allclose(X16[:, 15], probe)
+    # scores are relative to the other candidates of the query, so they are the regressor's output on all three rows
+    expected = model.predict_features(X16)
+    for i, p in enumerate(sample_passages):
+        assert by_id[p.doc_id].utility_score == pytest.approx(float(expected[i]))
+    assert [r.utility_score for r in ranked] == sorted([r.utility_score for r in ranked], reverse=True)
+
+
+def test_mpup_plus_without_its_two_extra_models_is_refused(sample_passages):
+    model = _plus_model()
+    for kwargs in ({}, {"cross_encoder": _FakeCrossEncoder()}, {"hidden_extractor": _FakeHidden()}):
+        pipeline = MPUPPipeline(predictor=model, prober=MockProber(seed=0), **kwargs)
+        with patch("src.features.d4_faithfulness._get_nli", return_value=_mock_nli()):
+            with pytest.raises(ValueError, match="MPUP\\+"):
+                pipeline.rank("query", sample_passages)

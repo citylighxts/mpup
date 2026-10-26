@@ -7,6 +7,7 @@ from src.retrieval.retriever import RetrievedPassage
 from src.probing.logit_probe import LogitProber
 from src.features.concatenate import build_feature_vector
 from src.features.hyde import query_to_statement
+from src.predictor.mpup_plus import MPUPPlusPredictor
 from src.predictor.mpup_predictor import MPUPPredictor
 from src.predictor.calibration import LinearCalibrator
 
@@ -28,6 +29,8 @@ class MPUPPipeline:
         utility_threshold: Optional[float] = None,
         hyde_generator=None,
         dense_retriever=None,
+        cross_encoder=None,
+        hidden_extractor=None,
     ):
         self.predictor = predictor
         self.prober = prober
@@ -38,6 +41,10 @@ class MPUPPipeline:
         # D1 includes the dense cosine similarity. Without a retriever here it keeps whatever
         # `dense_score` the passages already carry (0.0 by default), a train/serve mismatch.
         self.dense_retriever = dense_retriever
+        # MPUP+ (an `MPUPPlusPredictor`) also needs a cross-encoder scorer (`score(query, passages)`) and an
+        # extractor of the hidden state of M (`hidden_batch(query, passages)`); see `src.probing`.
+        self.cross_encoder = cross_encoder
+        self.hidden_extractor = hidden_extractor
 
     def rank(self, query: str, passages: list[RetrievedPassage]) -> list[RankedPassage]:
         """Score and sort the candidates of ONE query (a query-centred predictor treats them as its group).
@@ -64,7 +71,16 @@ class MPUPPipeline:
             )
             for i in range(len(passages))
         ])
-        base_scores = self.predictor.predict(X)
+        if isinstance(self.predictor, MPUPPlusPredictor):
+            if self.cross_encoder is None or self.hidden_extractor is None:
+                raise ValueError("MPUP+ needs both a cross_encoder and a hidden_extractor")
+            texts = [p.text for p in passages]
+            ce = self.cross_encoder.score(query, texts)
+            H = self.hidden_extractor.hidden_batch(query, texts)
+            X = self.predictor.features(X, ce, H)  # the 14 features, the cross-encoder score, the probe score
+            base_scores = self.predictor.predict_features(X)
+        else:
+            base_scores = self.predictor.predict(X)
         utility_scores = self.calibrator.transform(base_scores)
 
         ranked = [
