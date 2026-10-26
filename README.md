@@ -385,9 +385,13 @@ those of `experiments.run_big` for the same training and test rows (tested). The
 
 ```python
 from src.data.llm_backend import QuantizedLLM
+from src.features.hyde import CUDAHyDEGenerator
+from src.pipeline.mpup_pipeline import MPUPPipeline
 from src.predictor.mpup_plus import MPUPPlusPredictor
 from src.probing.cross_encoder import CrossEncoderScorer
 from src.probing.hidden_state import HiddenStateExtractor
+from src.probing.logit_probe import QuantizedProber
+from src.retrieval.dense_retriever import DenseRetriever
 
 # fit once on cached features: X14 (n, 14), ce (n,), H (n, 3584) from experiments.extract_extra, the Eq. (1) utility u
 model = MPUPPlusPredictor().fit(X14, ce, H, u, query_ids)
