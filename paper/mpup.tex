@@ -83,11 +83,11 @@ There are cheap alternatives method compared to LLM sampling. Semantic Perplexit
 
 Several other methods have been explored. There are LURE-RAG which introduces a lightweight LambdaMART reranker trained with a listwise utility loss to optimize context ordering, but relying on complex listwise utility supervision requires generating query and passage combinations, making the labeling cost expensive~\cite{chandra2026}. Another approach is RRPO, where passages selection treated as a sequential decision process trained via reinforcement learning directly from LLM feedback, which also which takes up big part of the memory and computation~\cite{wu2026}. Existing methods either require substantial memory and computational resources, or incur high costs.
 
-Meta-Probing Utility Predictor (MPUP), proposed in this paper, closes the gap. MPUP is a method to predict LLM-specific retrieval utility which means it can select the most useful passages for models without fine-tuning any model. Instead of having the target LLM answer with and without every passage~\cite{zhang2025c} or scoring each passage with a separate evaluation model~\cite{dai2025}, MPUP evaluates a passage’s usefulness by looking at 14 practical clues, such as document statistics, meaning overlap, and agreement with a hypothetical answer. Only three of them read the logits of an LLM, through one forward pass per passage (logit probing). MPUP runs its two LLM-based steps, one short generation per query and the probing pass, with one shared model on a single GPU and does not train any LLM. Section IV reports the measured memory footprint and extraction time.
+Meta-Probing Utility Predictor (MPUP), proposed in this paper, closes the gap. MPUP is a method to predict LLM-specific retrieval utility which means it can select the most useful passages for models without fine-tuning any model. Instead of having the target LLM answer with and without every passage~\cite{zhang2025c} or scoring each passage with a separate evaluation model~\cite{dai2025}, MPUP evaluates a passage’s usefulness by looking at 14 practical clues, such as document statistics, meaning overlap, and agreement with a hypothetical answer. Only three of them read the logits of an LLM, through one forward pass per passage (logit probing). MPUP runs its two LLM-based steps, one short generation per query and the probing pass, with one shared model on a single GPU and does not train any LLM. The extended variant MPUP+ adds two more clues, the score of a cross-encoder and a probe on the hidden state of the same LLM. Section IV reports the measured memory footprint and extraction time.
 
 Contributions of this paper are threefold. The first is that many cheap features, used together, rank passages by true utility better than the retriever's own score (BM25) and slightly better than a strong dense-similarity baseline, without a utility-specific model and without having an LLM generate an answer for each passage. Compared with dense similarity, the gain is small, and we report it with confidence intervals. Adding a linear probe on the hidden state of the same LLM (MPUP+) widens the gain to $+0.13$ on held-out questions of a larger study and raises the accuracy of the answers. Execution on a single GPU is also possible, and the measured peak memory is reported in Section IV. The second is a predictor that is trained once and is not retrained when the LLM that answers the question changes. Tested with one pair of LLMs, a predictor trained on Qwen2.5-7B ranks passages for Mistral-7B better than dense similarity and a cross-encoder without any Mistral label, although fitting to the target LLM's own labels is better still. The third is that the predictor can also be trained on annotations that already exist in the dataset, which are cheaper than labels produced by running the target LLM over every passage~\cite{zhang2025a}. Trained this way, the predictor beats BM25 on nine of eleven datasets but not dense similarity.
 
-Remaining sections are organized as follows. Section II reviews related work on retrieval-augmented generation, utility-based passage selection, and lightweight utility prediction. Section III describes the proposed Meta-Probing Utility Predictor, covering the 14 features, the predictor architecture, and the model and hardware setup. Section IV presents the experimental setup, datasets, and evaluation metrics, followed by the results and analysis, while Section V concludes the paper and outlines directions for future work.
+Remaining sections are organized as follows. Section II reviews related work on retrieval-augmented generation, utility-based passage selection, and lightweight utility prediction. Section III describes the proposed Meta-Probing Utility Predictor, covering the 14 features, the hidden-state probe and cross-encoder score of MPUP+, the predictor architecture, and the model and hardware setup. Section IV presents the experimental setup, datasets, and evaluation metrics, followed by the results and analysis, while Section V concludes the paper and outlines directions for future work.
 
 \section{Literature Review}
 LLM can only use the knowledge it learned during training, and this knowledge cannot be updated without retraining. RAG solves this by first retrieving documents from an external source, then ask the LLM to write its answer based on those documents~\cite{fan2024}. In traditional RAG, passages are chosen by relevance, which means how closely their content matches the query.
@@ -134,7 +134,7 @@ Utility-based selection is only useful if people can actually run it. Many pract
 \section{Methodology}
 Fig.~\ref{fig:mpup_overview} shows the MPUP pipeline. For each query, MPUP first asks an
 LLM $M$ to write one short hypothetical answer. Then, for every
-candidate passage, it extracts 14 features from five feature families.
+candidate passage, it extracts 14 features from five feature families (16 in the extended variant MPUP+, described below).
 Next, the trained regressor maps these features to a utility score, and an
 optional calibration step adjusts the scale of the score. Passages are ranked by the score, and the top passages are placed in the prompt
 of the target LLM. No fine-tuning of the target LLM is ever needed, and the question does not need to be answered twice for every passage.
@@ -168,33 +168,33 @@ means it makes the answer worse.
         x=1mm, y=1mm, font=\scriptsize, >=Stealth,
         box/.style={draw, rounded corners=1pt, align=center, inner sep=2pt},
         llm/.style={box, fill=black!15},
-        feat/.style={box, minimum width=17mm, minimum height=12mm},
+        feat/.style={box, minimum width=17mm, minimum height=15mm},
         num/.style={circle, draw, fill=white, inner sep=0.5pt, font=\tiny},
         train/.style={box, dashed},
         arr/.style={->, thick}]
         % inputs
         \node[box, minimum width=22mm] (q) at (14,0) {Query $q$};
         \node[box, minimum width=56mm] (p) at (62,0)
-            {Candidate passages $d_1,\dots,d_n$ \\ (BM25 top-5 or provided)};
+            {Candidate passages $d_1,\dots,d_n$ \\ (BM25 top-5 or top-20, or provided)};
         % hypothetical answer, once per query
         \node[llm, minimum width=60mm] (h) at (40,-12)
             {LLM $M$: one hypothetical answer per query \\ (one greedy decode, $\leq$48 tokens)};
         % five feature groups, computed for every passage
-        \node[feat] (d1) at (8,-29)  {\textbf{D1} retriever \\ BM25, dense, \\ rank, gap};
-        \node[feat] (d2) at (26,-29) {\textbf{D2} passage \\ length, grade, \\ credibility};
-        \node[feat] (d3) at (44,-29) {\textbf{D3} overlap \\ entity, \\ answerability};
-        \node[feat] (d4) at (62,-29) {\textbf{D4} NLI \\ entailment, \\ contradiction};
-        \node[feat, fill=black!15] (d5) at (80,-29) {\textbf{D5} probing \\ base, ctx ppl, \\ $\Delta H$};
+        \node[feat] (d1) at (8,-30)  {\textbf{D1} retriever \\ BM25, dense, \\ rank, gap, \\ cross-enc.$^\dagger$};
+        \node[feat] (d2) at (26,-30) {\textbf{D2} passage \\ length, grade, \\ credibility};
+        \node[feat] (d3) at (44,-30) {\textbf{D3} overlap \\ entity, \\ answerability};
+        \node[feat] (d4) at (62,-30) {\textbf{D4} NLI \\ entailment, \\ contradiction};
+        \node[feat, fill=black!15] (d5) at (80,-30) {\textbf{D5} probing \\ base, ctx ppl, \\ $\Delta H$, hidden- \\ state probe$^\dagger$};
         \node[draw, dotted, inner sep=3pt, fit=(d1)(d2)(d3)(d4)(d5)] (frame) {};
         % predictor and selection
-        \node[box, minimum width=48mm] (r) at (28,-44)
-            {$\phi(q,d;M)\in\mathbb{R}^{14}$, standardised \\ regressor $f_\theta$ \\ (within-query deviations)};
-        \node[box, minimum width=48mm] (s) at (28,-55)
-            {scores $\hat u$: sort, keep top $m$ ($m=5$)};
-        \node[box, minimum width=48mm] (l) at (28,-64)
-            {prompt for the target LLM $L$ \\ (not fine-tuned)};
-        \node[train, minimum width=30mm] (t) at (76,-44)
-            {training only: \\ true utility, Eq.~\eqref{eq:utility}, \\ computed with $M$ as $L$};
+        \node[box, minimum width=44mm] (r) at (28,-48)
+            {$\phi(q,d;M)\in\mathbb{R}^{14}$ ($\mathbb{R}^{16}$ with $^\dagger$), standardised \\ regressor $f_\theta$ (boosted trees, \\ within-query deviations)};
+        \node[box, minimum width=44mm] (s) at (28,-59)
+            {scores $\hat u$: sort, keep top $m$ \\ ($m=1$ or $3$ in the experiments)};
+        \node[box, minimum width=44mm] (l) at (28,-69)
+            {prompt for the target LLM $L$ \\ (query and top-$m$ passages; not fine-tuned)};
+        \node[train, minimum width=32mm] (t) at (76,-52)
+            {training only: \\ true utility, Eq.~\eqref{eq:utility}, \\ $M$ as $L$ with and without \\ each passage; fits $f_\theta$ and \\ the probe$^\dagger$};
         % step numbers, explained in the caption
         \node[num] at (h.north west) {1};
         \node[num] at (frame.north west) {2};
@@ -202,20 +202,25 @@ means it makes the answer worse.
         \node[num] at (s.north west) {4};
         % arrows
         \draw[arr] (q.south) -- (q.south |- h.north);
-        \draw[arr] (80,0 |- p.south) -- (80,0 |- frame.north);
+        \draw[arr] (86,0 |- p.south) -- (86,0 |- frame.north);
         \draw[arr] (6,0 |- q.south) -- (6,0 |- frame.north);
         \draw[arr] (h.south -| d3) -- (d3.north);
         \draw[arr] (h.south -| d4) -- (d4.north);
+        \draw[arr] (h.east) -| (d5.north);
         \draw[arr] (frame.south -| r) -- (r.north);
         \draw[arr] (r) -- (s);
         \draw[arr] (s) -- (l);
-        \draw[arr, dashed] (t.west) -- (r.east);
+        \draw[arr] (p.east) -- ++(7,0) |- (l.east);
+        \draw[arr, dashed] (t.west) -- (t.west -| r.east);
+        \draw[arr, dashed] (97,-52) -- (t.east);
     \end{tikzpicture}}
-    \caption{Overview of MPUP. (1) $M$ writes one hypothetical answer per query.
-    (2) Five feature groups are computed for every passage; D3 and D4 use the answer,
-    D5 probes $M$. (3) The regressor maps the 14 features to a utility score. (4) The top
-    $m$ passages go into the prompt of the target LLM (not fine-tuned). Shaded: uses $M$,
-    one shared model. Dashed: training only.}
+    \caption{Overview of MPUP and MPUP+. (1) $M$ writes one hypothetical answer per query.
+    (2) Five feature groups are computed for every passage (arrows into the dotted frame feed all
+    five); D3 and D4 use the answer, D5 probes $M$. $^\dagger$Added in MPUP+: the score of a
+    cross-encoder in D1 and a ridge probe on the hidden state of $M$ in D5, which make 16 features.
+    (3) The regressor maps the features to a utility score. (4) The top $m$ passages go, with their
+    text, into the prompt of the target LLM (not fine-tuned). Shaded: uses $M$, one shared model.
+    Dashed: training only.}
     \label{fig:mpup_overview}
 \end{figure}
 
@@ -259,12 +264,12 @@ $\widetilde{\mathcal{G}}$ are ranked first:
     \label{eq:pred}
 \end{equation}
 
-where $\phi(q,d;M)\in\mathbb{R}^{14}$ is the feature vector and
+where $\phi(q,d;M)\in\mathbb{R}^{14}$ ($\mathbb{R}^{16}$ in MPUP+) is the feature vector and
 $f_{\theta}$ is the predictor. $M$ is the LLM used for the two
-LLM-based steps, the hypothetical answer and logit probing. Either the target LLM $L$ or a fixed model can serve as $M$. In our experiments, $M$ is
+LLM-based steps, the hypothetical answer and logit probing (and, in MPUP+, the hidden-state pass). Either the target LLM $L$ or a fixed model can serve as $M$. In our experiments, $M$ is
 Qwen2.5-7B-Instruct. Predictor $f_{\theta}$ is trained once and is not retrained when $L$ changes.
 
-Table~\ref{tab:mpup_features} lists the 14 features. D1 describes how the retriever
+Table~\ref{tab:mpup_features} lists the 14 features and the two that MPUP+ adds. D1 describes how the retriever
 scored the passage: its BM25 score (divided by the highest score of
 the query), its dense similarity, its rank, and its score gap to the
 next passage. D2 describes the passage itself: token length,
@@ -288,11 +293,11 @@ $\Delta H = H_{\text{base}} - H_{\text{ctx}}$. Generated once per query, the hyp
         \toprule
         \textbf{Group} & \textbf{Features} \\
         \midrule
-        D1 Retriever & BM25 score, dense similarity, rank, score gap \\
+        D1 Retriever & BM25 score, dense similarity, rank, score gap; MPUP+: cross-encoder score \\
         D2 Document quality & Token length, Flesch--Kincaid grade, source credibility \\
         D3 Semantic overlap & Entity overlap, HyDE answerability \\
         D4 Faithfulness & Entailment probability, contradiction probability \\
-        D5 LLM probing & Base perplexity, context perplexity, $\Delta H$ \\
+        D5 LLM probing & Base perplexity, context perplexity, $\Delta H$; MPUP+: hidden-state probe score \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -342,7 +347,7 @@ $\tau$. Rankings do not change as long as $\alpha > 0$,
 because the order of the scores stays the same. Calibration is not
 used in the main results.
 
-Both LLM-based steps, hypothetical answer generation and logit probing, share one model $M$: Qwen2.5-7B-Instruct, run in bfloat16 on
+The LLM-based steps, hypothetical answer generation, logit probing and, in MPUP+, the hidden-state pass, share one model $M$: Qwen2.5-7B-Instruct, run in bfloat16 on
 a single NVIDIA RTX 6000 Ada GPU (48 GB). Sharing one copy avoids
 loading a second 7B model, and full-precision weights mean that no
 quantization error enters the probing and generation steps. Alternatively, the implementation can load $M$ in 4-bit NF4 with double
@@ -353,7 +358,7 @@ quantization.
 
 At inference time, MPUP makes one short greedy decode per query (at
 most 48 tokens) for the hypothetical answer. For each passage it makes
-one probing pass and one NLI pass, then applies the regressor. Passages are sorted by score, and the top $m$ ($m = 5$ by default)
+one probing pass and one NLI pass, then applies the regressor. MPUP+ adds one pass of the cross-encoder and one forward pass of $M$ for the hidden state per passage (the implementation does not merge the latter with the probing pass), and applies the probe. Passages are sorted by score, and the top $m$ ($m = 5$ by default, and $m = 1$ and $3$ in the answer experiments)
 are written as numbered context before the query. Dropping passages with a score $\leq \tau$ is also supported. With the selected
 predictor, which is trained on within-query deviations, the score is
 relative to the other candidates of the same query, so $\tau = 0$
@@ -411,7 +416,7 @@ Qwen2.5-7B-Instruct, run in bfloat16 on one NVIDIA RTX 6000 Ada GPU, serves as L
 \subsection{Larger study}\label{sec:big}
 Five candidates per question leave little room to reorder, and 100 questions per dataset give each single-dataset test little power. Therefore, a second, larger study samples 700 questions from each of the eleven datasets with gold answers (all 125 of Bamboogle) with the same filters, and takes the top twenty BM25 passages instead of five when a dataset provides none. HotpotQA, 2WikiMultiHopQA, and MuSiQue keep their provided paragraphs. Together, the study has 7,125 questions and 128,467 query--passage pairs, every pair labelled with Eq.~\eqref{eq:utility} by the same $M$ and settings as above.
 
-Every question is assigned once, by a hash of its identifier, to a development part (70\%) or a test part (30\%). Questions that appeared in either earlier sample always go to development, so no test question was seen while MPUP or MPUP+ was designed. Bamboogle has almost no question left for testing and is excluded from the test averages. Development holds 5,031 questions and test 2,094, of which 1,641 are rankable. On development only, 24 variants are compared by leave-one-dataset-out: three tree ensembles (100 trees of depth 2, 300 of depth 3, 500 of depth 4, all centred), each with or without the cross-encoder feature, with or without the hidden-state probe, and trained on the true utility or on its average with the change in log-probability of the gold answer. Fitted on the development questions, the best variant is then scored once on the test questions. Two settings are reported: trained on the development questions of all datasets, and trained on the development questions of the other datasets only, so that neither the test questions nor their dataset were seen in training. Used alone, the cross-encoder is an additional baseline.
+Every question is assigned once, by a hash of its identifier, to a development part (70\%) or a test part (30\%). Questions that appeared in either earlier sample always go to development, so no test question was seen while MPUP or MPUP+ was designed. Bamboogle has almost no question left for testing and is excluded from the test averages. Development holds 5,031 questions and test 2,094, of which 1,641 are rankable. On development only, 24 variants are compared by leave-one-dataset-out: three tree ensembles (100 trees of depth 2 and 300 of depth 3 with learning rate 0.05, 500 of depth 4 with learning rate 0.03, all centred, subsample 0.8), each with or without the cross-encoder feature, with or without the hidden-state probe, and trained on the true utility or on its average with the change in log-probability of the gold answer. Fitted on the development questions, the best variant is then scored once on the test questions. Two settings are reported: trained on the development questions of all datasets, and trained on the development questions of the other datasets only, so that neither the test questions nor their dataset were seen in training. Used alone, the cross-encoder is an additional baseline.
 
 Mistral-7B-Instruct-v0.3, from a different model family, serves as a second target LLM. Every test question of the larger study and a hash-selected 40\% of its development questions (4,099 questions, 73,885 pairs) are labelled again with Eq.~\eqref{eq:utility}, now with Mistral answering, and the 14 features are recomputed with Mistral as $M$ (hypothetical answer and logit probing), together with its hidden states at layer 24 of 32. Test questions are the same as above; the variant chosen on the Qwen development questions is reused without new selection, and every score is against the utility for Mistral. Three uses are compared: MPUP+ fitted on Mistral's labels with Mistral's features and hidden states; MPUP+ fitted on Mistral's labels but with every LLM-side feature and the probe computed by Qwen, so that the model that is read differs from the target LLM; and the MPUP+ predictor of the Qwen study applied unchanged, without any Mistral label.
 
