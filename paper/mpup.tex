@@ -403,7 +403,7 @@ Table~\ref{tab:big} shows the single evaluation on the test questions. Trained o
 
 \begin{table}[htbp]
     \centering
-    \caption{Significance of the gain of MPUP over each baseline on the test questions of the larger study (paired over queries). $r_s$: macro-average within-query Spearman correlation with the true utility (larger is better). $\Delta r_s$: MPUP minus the baseline, with its 95\% bootstrap interval (larger is better), and the same difference relative to the baseline. $p$: two-sided paired sign-flip permutation test with 200{,}000 flips (smaller is better; H$_0$: the mean difference is zero; the smallest value it can resolve is about $5\times10^{-6}$). $d_z$: standardised effect (larger is better).}
+    \caption{Significance of the gain of MPUP over each baseline on the test questions of the larger study (paired over queries). $r_s$: macro-average within-query Spearman correlation with the true utility (larger is better). $\Delta r_s$: MPUP minus the baseline, with its 95\% bootstrap interval (larger is better), and the same difference relative to the baseline. $p$: two-sided $p$-value of the paired $t$ statistic over queries ($t$ distribution with $n-1$ degrees of freedom; smaller is better; H$_0$: the mean difference is zero). The sign-flip permutation test with 200{,}000 flips gives the same decision but cannot resolve a value below about $5\times10^{-6}$, and at this distance in the tail the Wilcoxon and normal-approximation values differ from these by several orders of magnitude, so they show how far below 0.001 the evidence lies, not a precise probability. $d_z$: standardised effect (larger is better).}
     \label{tab:signif}
     \footnotesize
     \resizebox{\columnwidth}{!}{%
@@ -412,14 +412,14 @@ Table~\ref{tab:big} shows the single evaluation on the test questions. Trained o
         \textbf{Baseline} & \textbf{$r_s$ base} & \textbf{$r_s$ MPUP} & \textbf{$\Delta r_s$ [95\% CI]} & \textbf{Relative} & \textbf{$p$} & \textbf{$d_z$} \\
         \midrule
         \multicolumn{7}{l}{\textit{Trained on the development questions of all datasets (1,641 test queries)}} \\
-        Dense similarity & 0.226 & 0.356 & +0.130 [+0.116, +0.144] & +57\% & $<10^{-5}$ & 0.45 \\
-        Cross-encoder & 0.260 & 0.356 & +0.095 [+0.083, +0.108] & +37\% & $<10^{-5}$ & 0.37 \\
-        BM25 & 0.106 & 0.356 & +0.249 [+0.231, +0.266] & +235\% & $<10^{-5}$ & 0.67 \\
+        Dense similarity & 0.226 & 0.356 & +0.130 [+0.116, +0.144] & +57\% & $1.6\times10^{-67}$ & 0.45 \\
+        Cross-encoder & 0.260 & 0.356 & +0.095 [+0.083, +0.108] & +37\% & $4.4\times10^{-47}$ & 0.37 \\
+        BM25 & 0.106 & 0.356 & +0.249 [+0.231, +0.266] & +235\% & $4.0\times10^{-135}$ & 0.67 \\
         \midrule
         \multicolumn{7}{l}{\textit{Trained without the dataset being tested}} \\
-        Dense similarity & 0.226 & 0.351 & +0.124 [+0.111, +0.138] & +55\% & $<10^{-5}$ & 0.44 \\
-        Cross-encoder & 0.260 & 0.351 & +0.090 [+0.078, +0.102] & +35\% & $<10^{-5}$ & 0.35 \\
-        BM25 & 0.106 & 0.351 & +0.243 [+0.226, +0.261] & +229\% & $<10^{-5}$ & 0.67 \\
+        Dense similarity & 0.226 & 0.351 & +0.124 [+0.111, +0.138] & +55\% & $2.5\times10^{-64}$ & 0.44 \\
+        Cross-encoder & 0.260 & 0.351 & +0.090 [+0.078, +0.102] & +35\% & $4.4\times10^{-44}$ & 0.35 \\
+        BM25 & 0.106 & 0.351 & +0.243 [+0.226, +0.261] & +229\% & $9.9\times10^{-133}$ & 0.67 \\
         \bottomrule
     \end{tabular}}
 \end{table}
