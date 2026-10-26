@@ -168,6 +168,10 @@ and an 8 GB card were not measured.
 
 ### Larger study and MPUP+ (hidden-state probe)
 
+Naming: the paper calls the 16-feature predictor (14 features + cross-encoder score + hidden-state probe) **MPUP** and the
+14-feature predictor **MPUP-14**. The result files and tables below still carry the working labels `mpup+` (= MPUP) and
+`mpup (paper)` (= MPUP-14).
+
 700 questions per dataset (Bamboogle: all 125), top-20 BM25 candidates for the retrieved datasets,
 128,467 pairs labelled with Eq. 1 by Qwen2.5-7B-Instruct (bf16). Questions are split once by a hash
 of their id into development (70%) and test (30%); questions from the two earlier samples always go

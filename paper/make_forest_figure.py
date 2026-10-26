@@ -1,10 +1,10 @@
-"""Write paper/fig_forest.tex: MPUP+ minus dense similarity, per test dataset, as a TikZ forest plot.
+"""Write paper/fig_forest.tex: MPUP minus dense similarity, per test dataset, as a TikZ forest plot.
 
   python paper/make_forest_figure.py
 
 Reads the single evaluation of the larger study (results/big_final.json, trained on the development questions
 of all datasets), so the figure matches Table VII (`tab:big`) of the paper. Per dataset, the circle is the mean
-paired difference in within-query Spearman correlation r_s between MPUP+ and dense similarity and the line is its 95% t
+paired difference in within-query Spearman correlation r_s between MPUP and dense similarity and the line is its 95% t
 interval over the test queries (mean +- t * sd / sqrt(n)); a filled circle means the interval excludes zero.
 The open square is the same difference for MPUP without the additions (the 14 features), a point without an
 interval because only per-dataset means are stored for it. The last row is the difference over all rankable test
@@ -59,7 +59,7 @@ def build() -> str:
         L.append(f"  \\draw[thin] ({x(t):.3f},{y_axis:.3f}) -- ({x(t):.3f},{y_axis - 0.08:.3f}) "
                  f"node[below, inner sep=1.5pt] {{${t:+.1f}$}};".replace("+0.0", "0.0"))
     L.append(f"  \\node[anchor=north, inner sep=0pt] at ({x((X_MIN + X_MAX) / 2):.3f},{y_axis - 0.5:.3f}) "
-             r"{Paired difference in $r_s$ (MPUP+ $-$ dense), 95\% CI};")
+             r"{Paired difference in $r_s$ (MPUP $-$ dense), 95\% CI};")
     L.append(f"  \\node[anchor=east, inner sep=2pt] at (0,{ROW * 0.6 + 0.15:.3f}) "
              r"{\textit{Test dataset (queries)}};")
     for i, (label, mean, lo, hi, old) in enumerate(rows):
