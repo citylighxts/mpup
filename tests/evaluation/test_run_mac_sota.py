@@ -46,3 +46,48 @@ def test_the_cd_command_ranks_mpup_and_the_baselines_on_the_test_sample(tmp_path
                               alpha=0.05, out=str(out)))
     assert set(report["average_rank"]) == {"MPUP", "GainRAG-style", "LLM judgment", "Cross-encoder", "Dense", "BM25"}
     assert report["n_queries"] == 30 and report["cd"] > 0
+
+
+# ------------------------------------------------ stages: each one is saved as soon as it is done
+
+from experiments.run_mac_sota import done_stages, save_stage
+
+
+def test_stages_are_saved_one_by_one_and_kept_when_another_stage_is_added(tmp_path):
+    out = str(tmp_path / "scores")
+    assert done_stages(out) == set()
+    save_stage(out, "ce", np.array([1.0, 2.0, 3.0]), n_rows=3)
+    save_stage(out, "gain", np.array([0.5, 0.1, 0.2]), n_rows=3)
+    assert done_stages(out) == {"ce", "gain"}
+    z = np.load(out + ".npz")
+    assert z["ce"].tolist() == [1.0, 2.0, 3.0] and z["gain"].tolist() == [0.5, 0.1, 0.2] and int(z["n_test_rows"]) == 3
+
+
+def test_a_stage_for_a_different_test_sample_is_refused(tmp_path):
+    import pytest
+
+    out = str(tmp_path / "scores")
+    save_stage(out, "ce", np.zeros(3), n_rows=3)
+    with pytest.raises(ValueError, match="another test sample"):
+        save_stage(out, "gain", np.zeros(5), n_rows=5)
+
+
+def test_load_rows_without_features_needs_neither_hidden_states_nor_a_feature_matrix(tmp_path):
+    import shutil
+
+    d = _mac_dir(tmp_path / "a", n_q=4, k=3)
+    shutil.rmtree(d / "hidden")
+    rows = load_rows(d, with_features=False)
+    assert "X" not in rows and len(rows["y"]) == 12 and rows["ptext"][4] == "text 1-1"
+
+
+def test_the_cd_command_names_the_stage_that_is_missing(tmp_path):
+    import pytest
+
+    out = str(tmp_path / "scores")
+    save_stage(out, "ce", np.zeros(150), n_rows=150)
+    train = _mac_dir(tmp_path / "train", n_q=60, seed=1)
+    test = _mac_dir(tmp_path / "test", n_q=30, seed=2)
+    with pytest.raises(SystemExit, match="gain"):
+        cmd_cd(Namespace(train=str(train), test=str(test), scores=out + ".npz", config="base+probe",
+                         alpha=0.05, out=str(tmp_path / "cd")))

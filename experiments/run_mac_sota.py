@@ -30,8 +30,9 @@ from src.evaluation.protocol import LABEL_UTILITY
 COMBINED = ("base-noD2D4", "base+probe")
 
 
-def load_rows(data_dir: Path) -> dict:
-    """Extended features, labels, query ids and texts of every row with the Eq. (1) utility, in file order."""
+def load_rows(data_dir: Path, with_features: bool = True) -> dict:
+    """Extended features (unless `with_features` is False), labels, query ids and texts of every row with the Eq. (1)
+    utility, in file order. The score stages need no features, which saves most of the memory."""
     data_dir = Path(data_dir)
     items = {(it["dataset"], str(it["query_id"])): it for it in json.loads((data_dir / "items.json").read_text())}
     parts = {k: [] for k in ("X", "y", "q", "qtext", "ptext")}
@@ -39,49 +40,93 @@ def load_rows(data_dir: Path) -> dict:
         z = np.load(path, allow_pickle=False)
         if str(z["label_source"]) != LABEL_UTILITY:
             continue
-        parts["X"].append(extended_matrix(data_dir, path.stem, z))
+        if with_features:
+            parts["X"].append(extended_matrix(data_dir, path.stem, z))
         parts["y"].append(z["y"])
         for ds, qid, pid in zip(z["dataset"], z["query_ids"], z["passage_ids"]):
             item = items[(str(ds), str(qid))]
             parts["q"].append(f"{ds}:{qid}")
             parts["qtext"].append(item["query"])
             parts["ptext"].append({p["id"]: p["text"] for p in item["passages"]}[str(pid)])
-    return {"X": np.concatenate(parts["X"]), "y": np.concatenate(parts["y"]), "q": np.array(parts["q"]),
+    rows = {"y": np.concatenate(parts["y"]), "q": np.array(parts["q"]),
             "qtext": np.array(parts["qtext"], dtype=object), "ptext": np.array(parts["ptext"], dtype=object)}
+    if with_features:
+        rows["X"] = np.concatenate(parts["X"])
+    return rows
+
+
+def done_stages(out: str) -> set[str]:
+    path = Path(out).with_suffix(".npz")
+    return {k for k in np.load(path).files if k != "n_test_rows"} if path.exists() else set()
+
+
+def save_stage(out: str, name: str, values: np.ndarray, n_rows: int) -> None:
+    """Add one stage to the scores file, keeping the stages that are already there."""
+    path = Path(out).with_suffix(".npz")
+    data = dict(np.load(path)) if path.exists() else {}
+    if data and int(data["n_test_rows"]) != n_rows:
+        raise ValueError(f"{path} belongs to another test sample ({int(data['n_test_rows'])} rows, not {n_rows})")
+    data[name] = values
+    data["n_test_rows"] = np.array(n_rows)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(path, **data)
+
+
+def _free_memory() -> None:
+    import gc
+
+    gc.collect()
+    try:
+        import torch
+
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+    except Exception:  # noqa: BLE001 - freeing memory is best effort
+        pass
 
 
 def cmd_scores(args) -> None:
-    from src.data.mlx_backend import MLXLLM
-    from src.predictor.gain_selector import GainSelector
-    from src.probing.cross_encoder import CrossEncoderScorer
-    from src.probing.utility_judge import MLXUtilityJudge
+    """Each stage is computed on its own, saved at once, and skipped when already saved (use --force to redo it)."""
+    stages = [x for x in ("ce", "gain", "judge") if x in args.stages]
+    test = load_rows(Path(args.test), with_features=False)
+    te = np.arange(len(test["y"]))
+    todo = [x for x in stages if args.force or x not in done_stages(args.out)]
+    if not todo:
+        print("all requested stages are already saved")
+        return
+    train = load_rows(Path(args.train), with_features=False) if "gain" in todo else None
+    for name in todo:
+        if name == "ce":
+            from src.probing.cross_encoder import CrossEncoderScorer
 
-    train, test = load_rows(Path(args.train)), load_rows(Path(args.test))
-    te, tr = np.arange(len(test["y"])), np.arange(len(train["y"]))
-    out = {"n_test_rows": np.array(len(te))}
+            model = CrossEncoderScorer(args.cross_encoder)
+            values = score_rows(lambda q, ps: model.score(q, ps), test["qtext"], test["ptext"], test["q"], te)
+        elif name == "gain":
+            from src.predictor.gain_selector import GainSelector
 
-    ce = CrossEncoderScorer(args.cross_encoder)
-    out["ce"] = score_rows(lambda q, ps: ce.score(q, ps), test["qtext"], test["ptext"], test["q"], te)
-    del ce
-    print("cross-encoder done", flush=True)
+            model = GainSelector(args.selector, max_length=args.max_length)
+            groups = group_rows(train["q"], np.arange(len(train["y"])))
+            model.fit([train["qtext"][g[0]] for g in groups], [[train["ptext"][i] for i in g] for g in groups],
+                      [train["y"][g] for g in groups], epochs=args.epochs)
+            values = score_rows(lambda q, ps: model.score(q, ps), test["qtext"], test["ptext"], test["q"], te)
+        else:
+            from src.data.mlx_backend import MLXLLM
+            from src.probing.utility_judge import MLXUtilityJudge
 
-    selector = GainSelector(args.selector, max_length=args.max_length)
-    groups = group_rows(train["q"], tr)
-    selector.fit([train["qtext"][g[0]] for g in groups], [[train["ptext"][i] for i in g] for g in groups],
-                 [train["y"][g] for g in groups], epochs=args.epochs)
-    out["gain"] = score_rows(lambda q, ps: selector.score(q, ps), test["qtext"], test["ptext"], test["q"], te)
-    del selector
-    print("GainRAG-style selector done", flush=True)
-
-    judge = MLXUtilityJudge(MLXLLM(args.llm), batch_size=args.batch_size)
-    out["judge"] = score_rows(lambda q, ps: judge.score(q, ps), test["qtext"], test["ptext"], test["q"], te)
-    np.savez(args.out, **out)
-    print(f"saved {args.out}.npz")
+            model = MLXUtilityJudge(MLXLLM(args.llm), batch_size=args.batch_size)
+            values = score_rows(lambda q, ps: model.score(q, ps), test["qtext"], test["ptext"], test["q"], te)
+        save_stage(args.out, name, values, len(te))
+        print(f"{name} done and saved", flush=True)
+        del model
+        _free_memory()
 
 
 def cmd_cd(args) -> dict:
     train, test = load_rows(Path(args.train)), load_rows(Path(args.test))
     z = np.load(args.scores)
+    missing = [k for k in ("ce", "gain", "judge") if k not in z.files]
+    if missing:
+        raise SystemExit(f"missing stages {missing}: run `scores --stages {' '.join(missing)}` first")
     assert len(z["ce"]) == len(test["y"]), "the saved scores belong to another test sample"
     cfg = next(c for c in grid_v2(COMBINED) if c.name == args.config)
     preds = {"MPUP": cfg.fit_predict()(train["X"], train["y"], test["X"], train["q"], test["q"]),
@@ -105,6 +150,8 @@ def main() -> None:
     ap.add_argument("--max-length", type=int, default=256)
     ap.add_argument("--epochs", type=int, default=2)
     ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--stages", nargs="+", default=["ce", "gain", "judge"], choices=["ce", "gain", "judge"])
+    ap.add_argument("--force", action="store_true", help="recompute stages that are already saved")
     args = ap.parse_args()
     (cmd_scores if args.mode == "scores" else cmd_cd)(args)
 
