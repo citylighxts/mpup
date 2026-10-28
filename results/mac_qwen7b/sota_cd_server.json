@@ -1,0 +1,30 @@
+{
+ "n_queries": 661,
+ "alpha": 0.05,
+ "friedman_p": 1.1157848944778798e-38,
+ "cd": 0.2932872276148366,
+ "average_rank": {
+  "MPUP": 2.983358547655068,
+  "GainRAG-style": 3.529500756429652,
+  "LLM judgment": 3.3063540090771557,
+  "Cross-encoder": 3.4001512859304084,
+  "Dense": 3.5892586989409985,
+  "BM25": 4.191376701966717
+ },
+ "mean_r_s": {
+  "MPUP": 0.3734761613177005,
+  "GainRAG-style": 0.25675808016065926,
+  "LLM judgment": 0.31818466064983414,
+  "Cross-encoder": 0.3113700950981224,
+  "Dense": 0.28306483399597854,
+  "BM25": 0.1286717341055095
+ },
+ "not_significantly_different": [
+  [
+   "LLM judgment",
+   "Cross-encoder",
+   "GainRAG-style",
+   "Dense"
+  ]
+ ]
+}
