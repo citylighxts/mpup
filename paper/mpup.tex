@@ -553,6 +553,38 @@ With Mistral answering and the top passage in the prompt, MPUP (fitted with Mist
     \end{tabular}
 \end{table}
 
+\subsection{Comparison with utility-aware baselines}\label{sec:sota}
+The larger study compares MPUP with relevance baselines only. Methods that estimate utility are compared with MPUP in a supporting experiment on the pilot-sized samples of the laptop run: every method is fitted on the first sample of questions (five BM25 candidates, or the provided paragraphs) and scored once on the third sample (661 rankable test queries), whose questions were never used for any choice. Two utility-aware baselines are re-implemented under this protocol and are not the original systems. The first is a selector in the manner of GainRAG~\cite{jiang2025}, a cross-encoder (bge-reranker-base) fine-tuned on the Eq.~\eqref{eq:utility} utilities of the first sample by listwise distillation. The second is a zero-shot judgment of the same LLM $M$ that asks whether the passage is useful for answering the question and scores the logit of ``Yes'' minus that of ``No'', one forward pass per passage and no label. The cross-encoder, dense similarity, and BM25 complete the set.
+
+MPUP reaches the highest mean $r_s$ (0.373), against 0.318 for the zero-shot judgment, 0.311 for the cross-encoder, 0.283 for dense similarity, 0.257 for the GainRAG-style selector, and 0.129 for BM25. The methods differ (Friedman test, $p = 10^{-38}$), and the critical difference of the Nemenyi test, which takes queries as blocks~\cite{demsar2006}, is 0.29 ranks (Fig.~\ref{fig:cd}). MPUP has the best average rank (2.98), and the four next methods lie within one critical difference of each other, so only MPUP is separated from them. Table~\ref{tab:sota} gives the paired differences: MPUP is significantly better than every baseline after Holm correction, but against the strongest ones the effect is small ($d_z$ of 0.15 and 0.17 against the zero-shot judgment and the cross-encoder), and it ranks the passages better on 40\% to 46\% of the queries only, winning by larger margins when it wins. The GainRAG-style selector is trained on about one thousand questions and falls below dense similarity, so it is a weak instance of its family.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Paired comparison of MPUP with each baseline on the 661 test queries of the third sample (laptop run, Qwen2.5-7B-Instruct 4-bit). $r_s$: mean within-query Spearman correlation (larger is better). Rank: average rank over queries among the six methods (1 is best). $\Delta r_s$: MPUP minus the baseline with its 95\% bootstrap interval (larger is better). $d_z$: standardised effect. $p_{\mathrm{H}}$: paired sign-flip permutation test with 200{,}000 flips, Holm-adjusted over the five comparisons (smaller is better; the smallest value it can resolve is about $5\times10^{-6}$).}
+    \label{tab:sota}
+    \footnotesize
+    \resizebox{\columnwidth}{!}{%
+    \begin{tabular}{lrrlrr}
+        \toprule
+        \textbf{Method} & \textbf{$r_s$} & \textbf{Rank} & \textbf{$\Delta r_s$ [95\% CI]} & \textbf{$d_z$} & \textbf{$p_{\mathrm{H}}$} \\
+        \midrule
+        MPUP (proposed) & 0.373 & 2.98 & & & \\
+        Zero-shot LLM judgment & 0.318 & 3.31 & +0.055 [+0.025, +0.084] & 0.15 & $<$0.001 \\
+        Cross-encoder & 0.311 & 3.40 & +0.062 [+0.035, +0.089] & 0.17 & $<$0.001 \\
+        Dense similarity & 0.283 & 3.59 & +0.090 [+0.061, +0.119] & 0.23 & $<$0.001 \\
+        GainRAG-style selector & 0.257 & 3.53 & +0.117 [+0.083, +0.151] & 0.25 & $<$0.001 \\
+        BM25 & 0.129 & 4.19 & +0.245 [+0.203, +0.284] & 0.46 & $<$0.001 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \resizebox{\columnwidth}{!}{\input{fig_cd.tex}}
+    \caption{Critical-difference diagram of the six methods on the 661 test queries (average rank over queries, 1 is best; Nemenyi test at $\alpha = 0.05$). Bars join methods whose average ranks differ by less than the critical difference (CD).}
+    \label{fig:cd}
+\end{figure}
+
 \subsection{Cost}
 Table~\ref{tab:memory} gives the peak GPU memory of the full pipeline (generation, labelling, probing, and NLI), measured on the datasets with the longest contexts (40 questions from MuSiQue and HotpotQA, batch size 32). Labelling and feature extraction for the pilot sample (twelve datasets, 9,554 query--passage pairs, 7,997 of them labelled with the true utility) took 27 minutes in bfloat16 on one GPU, about 0.17 s per pair. Evaluation itself runs on the CPU. Over the whole extraction run for a second pilot sample (twelve datasets), the peak in bfloat16 was 22.3 GiB. For the larger study (128,467 pairs, up to twenty candidates per question), labelling and the 14 features took 5.7 hours, with a peak of 25.7 GiB in bfloat16. Hidden states and cross-encoder scores for MPUP took a further 78 minutes (about 36 ms per pair) in a separate pass, which also scores the gold-answer log-probability used only during development. For Mistral (73,885 pairs), labelling and the 14 features took 3.8 hours with a peak of 27.2 GiB, and the hidden states a further 45 minutes. Reading the hidden state from the same forward pass as D5 would avoid that second pass, but was not implemented. The behaviour on a card or laptop with 8 GB of memory was not measured. On one Apple M5 laptop (24 GiB of unified memory, MLX), the same extraction for the first sample, with Qwen2.5-7B-Instruct in 4-bit precision and two layers of hidden states per pair, took 2.9 hours and peaked at 6.4 GiB of MLX memory over the whole run; the embedding and NLI models run outside MLX and are not counted.
 
