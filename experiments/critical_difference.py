@@ -93,7 +93,7 @@ def to_tikz(ranks: dict[str, float], cd: float, width_cm: float = 9.0, highlight
         y = 0.62 + 0.16 * g
         L.append(f"  \\draw[line width=2.2pt, color=black!65, line cap=round] ({x(ranks[grp[0]]):.3f},{y:.3f}) -- ({x(ranks[grp[-1]]):.3f},{y:.3f});")
     top = 1.15 + 0.16 * max(len(cliques(ranks, cd)) - 1, 0)
-    L.append(f"  \\draw[<->, thick] ({x(1):.3f},{top:.3f}) -- ({x(1 + cd):.3f},{top:.3f}) node[midway, above, inner sep=2pt] {{CD = {cd:.2f}}};")
+    L.append(f"  \\draw[<->, thick] ({x(1):.3f},{top:.3f}) -- ({x(1 + cd):.3f},{top:.3f}) node[right, inner sep=4pt] {{CD = {cd:.2f}}};")
     L.append(r"\end{tikzpicture}")
     return "\n".join(L) + "\n"
 
