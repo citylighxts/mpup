@@ -72,9 +72,9 @@ def to_tikz(ranks: dict[str, float], cd: float, width_cm: float = 8.0) -> str:
         L.append(f"  \\draw ({x(ranks[name]):.3f},0) -- ({x(ranks[name]):.3f},{depth:.3f}) -- ({x(ranks[name]) + off:.3f},{depth:.3f}) "
                  f"node[anchor={side}, inner sep=1pt] {{{name} ({ranks[name]:.2f})}};")
     for g, grp in enumerate(cliques(ranks, cd)):
-        y = 0.35 + 0.18 * g
-        L.append(f"  \\draw[very thick] ({x(ranks[grp[0]]) - 0.03:.3f},{-0.06 - 0.12 * g:.3f}) -- ({x(ranks[grp[-1]]) + 0.03:.3f},{-0.06 - 0.12 * g:.3f});")
-    L.append(f"  \\draw[<->] ({x(lo):.3f},0.75) -- ({x(lo) + x(lo + cd):.3f},0.75) node[right, inner sep=3pt] {{CD = {cd:.2f}}};")
+        y = 0.42 + 0.14 * g  # bars above the axis, clear of the method names below it
+        L.append(f"  \\draw[very thick] ({x(ranks[grp[0]]) - 0.03:.3f},{y:.3f}) -- ({x(ranks[grp[-1]]) + 0.03:.3f},{y:.3f});")
+    L.append(f"  \\draw[<->] ({x(lo):.3f},1.0) -- ({x(lo) + x(lo + cd):.3f},1.0) node[right, inner sep=3pt] {{CD = {cd:.2f}}};")
     L.append(r"\end{tikzpicture}")
     return "\n".join(L) + "\n"
 
