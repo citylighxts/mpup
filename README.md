@@ -234,6 +234,36 @@ python -m experiments.answer_accuracy_big --data data/processed/big_mistral --va
     --model mistralai/Mistral-7B-Instruct-v0.3 --layer 24 --out results/cross_llm_answer_accuracy
 ```
 
+### Criteria C3–C6 of Table I (2026-10-29)
+
+`experiments/run_criteria.py`, `run_probe_baselines.py`, `selection_latency.py`; all variants keep the chosen
+configuration (`gbr(500,d4)|u|ce|probe`), fitted on the development questions only. Qwen2.5-7B test, 1,641 questions.
+
+- **C3 cost tiers** ([`results/light.md`](results/light.md), [`results/selection_latency.md`](results/selection_latency.md)):
+  full 0.356 (2.5 s/query, 21.5 GiB) · no generation 0.350 · reader Qwen2.5-1.5B instead of M 0.296 (0.83 s, 7.7 GiB) ·
+  reader 0.5B 0.280 · no LM 0.275 (0.70 s, 3.5 GiB) · cross-encoder 0.260.
+- **C6 answer-containment labels** ([`results/answer_labels.md`](results/answer_labels.md)): MPUP 0.310, reader-1.5B 0.285,
+  no-LM 0.274 — no LLM run to make labels.
+- **C5 third LLM, OLMo-2-7B-Instruct** ([`results/transfer_matrix.md`](results/transfer_matrix.md),
+  [`results/transfer.md`](results/transfer.md)): every source→target cell of Qwen/Mistral/OLMo beats the cross-encoder;
+  Qwen→OLMo 0.312 vs native OLMo 0.316 (p = 0.47).
+- **C4 utility judgments of the target LLM** (SpecUBench methods of Zhang et al., re-implemented;
+  [`results/probe_baselines.md`](results/probe_baselines.md), [`results/probing.md`](results/probing.md)):
+  PVS w/ pseudo-answer 0.287, PVS w/o 0.269, likelihood 0.253, LVR 0.219, answer confidence −0.060; MPUP 0.356;
+  reader-1.5B with answer labels 0.285 (level with PVS w/ A, p = 0.76). Mistral ([`results/probe_baselines_mistral.md`](results/probe_baselines_mistral.md)):
+  likelihood 0.308, PVS w/ A 0.292; MPUP 0.373, Qwen-fitted MPUP 0.313; reader-1.5B 0.264 (below the best two).
+
+```bash
+mkdir -p data/processed/big_olmo && cp data/processed/big_mistral/{items,stats}.json data/processed/big_olmo/
+python -m experiments.extract_multidataset --data data/processed/big_olmo --backend cuda --model allenai/OLMo-2-1124-7B-Instruct
+python -m experiments.extract_extra --data data/processed/big_olmo --model allenai/OLMo-2-1124-7B-Instruct --layers 16 24
+python -m experiments.extract_extra --data data/processed/big --model Qwen/Qwen2.5-1.5B-Instruct --layers 14 21 --out-dir extra_q15 --batch-size 8
+python -m experiments.extract_extra --data data/processed/big --model Qwen/Qwen2.5-0.5B-Instruct --layers 12 18 --out-dir extra_q05
+python -m experiments.run_criteria light|labels|transfer|matrix|probing --out results/<name>
+python -m experiments.run_probe_baselines --data data/processed/big --model Qwen/Qwen2.5-7B-Instruct --out results/probe_baselines
+python -m experiments.selection_latency --n 100 --out results/selection_latency
+```
+
 ### Earlier run — Apple Silicon, MLX Llama-3.2-3B-Instruct 4-bit
 
 Same questions and candidates, 719 rankable queries ([`results/multidataset.md`](results/multidataset.md)).

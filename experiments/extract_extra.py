@@ -86,6 +86,7 @@ def main() -> None:
     ap.add_argument("--ce-model", default=DEFAULT_CE)
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--layers", type=int, nargs="+", default=list(LAYERS), help="about 1/2 and 3/4 of the depth")
+    ap.add_argument("--out-dir", default="extra", help="subdirectory of --data; another one keeps a second reader model apart")
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
 
@@ -94,9 +95,10 @@ def main() -> None:
     by_name: dict[str, dict] = {}
     for it in items:
         by_name.setdefault(it["dataset"], {})[str(it["query_id"])] = it
-    (data / "extra").mkdir(exist_ok=True)
+    extra = data / args.out_dir
+    extra.mkdir(exist_ok=True)
     todo = [p for p in sorted((data / "features").glob("*.npz"))
-            if (args.force or not (data / "extra" / p.name).exists()) and p.stem in by_name
+            if (args.force or not (extra / p.name).exists()) and p.stem in by_name
             and all(it["gold_answers"] for it in by_name[p.stem].values())]
     if not todo:
         print("nothing to do", flush=True)
@@ -110,6 +112,7 @@ def main() -> None:
     ce_tok = AutoTokenizer.from_pretrained(args.ce_model)
     ce = AutoModelForSequenceClassification.from_pretrained(args.ce_model, dtype=torch.float16).cuda().eval()
 
+    start = time.time()
     for path in todo:
         t0 = time.time()
         z = np.load(path)
@@ -133,10 +136,13 @@ def main() -> None:
         for L in args.layers:
             out[f"hidden_{L}"] = ctx_h[L]
             out[f"hidden_q_{L}"] = base_h[L][qi]
-        np.savez(data / "extra" / path.name, **out)
+        np.savez(extra / path.name, **out)
         y = z["y"]
         rho = np.corrcoef(out["soft"], y)[0, 1]
         print(f"{path.stem}: {len(y)} pairs, corr(soft, u) {rho:.3f} ({time.time() - t0:.0f}s)", flush=True)
+    info = {"model": args.model, "ce_model": args.ce_model, "layers": args.layers, "seconds": round(time.time() - start),
+            "pairs": int(sum(len(np.load(p)["y"]) for p in todo)), "peak_gpu_gib": round(torch.cuda.max_memory_allocated() / 2**30, 2)}
+    (extra / "run_info.json").write_text(json.dumps(info, indent=1))
 
 
 if __name__ == "__main__":
