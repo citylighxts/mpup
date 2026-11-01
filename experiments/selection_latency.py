@@ -42,6 +42,10 @@ TIERS = {"full (MPUP)": ["hyde", "dense", "d2_d3", "d4", "d5", "hidden_M", "ce",
          "reader-1.5B": ["dense", "d2_d3", "hidden_R1.5B", "ce", "regressor"],
          "reader-0.5B": ["dense", "d2_d3", "hidden_R0.5B", "ce", "regressor"],
          "no-LM": ["dense", "d2_d3", "ce", "regressor"]}
+READERS_FULL = {"1.5B": ("Qwen/Qwen2.5-1.5B-Instruct", 21), "3B": ("Qwen/Qwen2.5-3B-Instruct", 27)}
+for _r in READERS_FULL:  # the reader as M: its HyDE claim, NLI against it, its D5 and its hidden state
+    TIERS[f"reader-{_r}, all features"] = ["dense", "d2_d3", f"hyde_R{_r}", f"d4_R{_r}", f"d5_R{_r}", f"hidden_R{_r}f",
+                                          "ce", "regressor"]
 
 
 def timed(fn, *a):
@@ -72,7 +76,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data/processed/big")
     ap.add_argument("--n", type=int, default=100)
-    ap.add_argument("--no-m", action="store_true", help="skip the phase with M (smoke test next to another job)")
+    ap.add_argument("--no-m", action="store_true", help="skip the phase with M (its tiers are then left out)")
+    ap.add_argument("--readers-full", nargs="*", default=list(READERS_FULL), help="readers timed as M of all features")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -86,6 +91,8 @@ def main() -> None:
     sample = [items[q] for q in qids]
     stats = load_stats(data / "stats.json")
     times = {k: [] for k in ("hyde", "dense", "d2_d3", "d4", "d5", "hidden_M", "ce", "hidden_R1.5B", "hidden_R0.5B", "regressor")}
+    for r in args.readers_full:
+        times.update({f"{k}_R{r}{'f' if k == 'hidden' else ''}": [] for k in ("hyde", "d4", "d5", "hidden")})
     peak = {}
 
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -126,30 +133,42 @@ def main() -> None:
         peak["reader-" + name.split("R")[1]] = round(torch.cuda.max_memory_allocated() / 2**30, 2)
         r.unload()
 
-    # phase 4: M and NLI on top of phase 1 (full and no-generation tiers)
-    if args.no_m:
-        print({k: np.mean(v) if v else None for k, v in times.items()}, peak)
-        return
-    torch.cuda.empty_cache()
-    torch.cuda.reset_peak_memory_stats()
     from src.features.hyde import CUDAHyDEGenerator
     from src.probing.logit_probe import QuantizedProber
 
-    llm = QuantizedLLM("Qwen/Qwen2.5-7B-Instruct", quantization="none", batch_size=32, logprob_batch_size=32)
-    hyde, prober = CUDAHyDEGenerator(llm=llm), QuantizedProber(llm=llm, batch_size=32)
-    for it in sample:
-        q, texts = it["query"], [p["text"] for p in it["passages"]]
-        claim, t = timed(hyde.generate, q); times["hyde"].append(t)
-        _, t = timed(lambda: [d4_to_array(extract_d4(claim, x)) for x in texts]); times["d4"].append(t)
-        _, t = timed(prober.probe_batch, q, texts); times["d5"].append(t)
-        _, t = timed(hidden_pass, llm, q, texts, 21); times["hidden_M"].append(t)
-    peak_full = round(torch.cuda.max_memory_allocated() / 2**30, 2)
-    peak["full (MPUP)"] = peak["no-generation"] = peak_full
+    def as_m(path: str, layer: int, keys: dict[str, str]) -> float:
+        """The tier that reads `path` as M: HyDE claim, NLI against it, D5 probing, hidden state; its peak memory
+        (E5, the cross-encoder and the NLI model included)."""
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+        llm = QuantizedLLM(path, quantization="none", batch_size=32, logprob_batch_size=32)
+        hyde, prober = CUDAHyDEGenerator(llm=llm), QuantizedProber(llm=llm, batch_size=32)
+        for it in sample:
+            q, texts = it["query"], [p["text"] for p in it["passages"]]
+            claim, t = timed(hyde.generate, q); times[keys["hyde"]].append(t)
+            _, t = timed(lambda: [d4_to_array(extract_d4(claim, x)) for x in texts]); times[keys["d4"]].append(t)
+            _, t = timed(prober.probe_batch, q, texts); times[keys["d5"]].append(t)
+            _, t = timed(hidden_pass, llm, q, texts, layer); times[keys["hidden"]].append(t)
+        out = round(torch.cuda.max_memory_allocated() / 2**30, 2)
+        llm.unload()
+        return out
+
+    # phase 4: each small reader as M, on top of phase 1 (+ NLI)
+    for r in args.readers_full:
+        path, layer = READERS_FULL[r]
+        peak[f"reader-{r}, all features"] = as_m(path, layer, {"hyde": f"hyde_R{r}", "d4": f"d4_R{r}",
+                                                              "d5": f"d5_R{r}", "hidden": f"hidden_R{r}f"})
+    # phase 5: M itself (full and no-generation tiers)
+    if not args.no_m:
+        peak["full (MPUP)"] = peak["no-generation"] = as_m("Qwen/Qwen2.5-7B-Instruct", 21, {
+            "hyde": "hyde", "d4": "d4", "d5": "d5", "hidden": "hidden_M"})
 
     n_pass = [len(it["passages"]) for it in sample]
-    comp = {k: {"mean_ms": 1000 * float(np.mean(v)), "median_ms": 1000 * float(np.median(v))} for k, v in times.items()}
+    comp = {k: {"mean_ms": 1000 * float(np.mean(v)), "median_ms": 1000 * float(np.median(v))} for k, v in times.items() if v}
     tiers = {}
     for t, parts in TIERS.items():
+        if not all(times.get(p) for p in parts):
+            continue
         per_q = np.sum([np.array(times[p]) for p in parts], axis=0)
         tiers[t] = {"mean_ms": 1000 * float(per_q.mean()), "median_ms": 1000 * float(np.median(per_q)),
                     "peak_gpu_gib": peak.get(t), "llm_calls": parts}

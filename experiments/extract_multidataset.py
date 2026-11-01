@@ -67,12 +67,13 @@ def item_features(item: dict, claim: str, stats: CorpusStats, dense: DenseRetrie
     return np.array(rows)
 
 
-def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, dense, stats) -> None:
+def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, dense, stats,
+                    features_dir: str = "features", label: bool = True) -> None:
     t0 = time.time()
     has_gold = all(it["gold_answers"] for it in items)
 
     label_by_pair: dict[tuple[str, str], float] = {}
-    if has_gold:
+    if has_gold and label:
         labeler = BatchedUtilityLabeler(llm)  # relaxed EM + token F1, as in the paper
         rows = labeler.label_corpus(
             [{"query_id": it["query_id"], "query": it["query"], "gold_answers": it["gold_answers"],
@@ -91,17 +92,17 @@ def process_dataset(name: str, items: list[dict], out: Path, llm, hyde, prober, 
             X.append(f)
             qids.append(it["query_id"])
             pids.append(p["id"])
-            y.append(label_by_pair[(it["query_id"], p["id"])] if has_gold else p["proxy_label"])
+            y.append(0.0 if not label else label_by_pair[(it["query_id"], p["id"])] if has_gold else p["proxy_label"])
         if (i + 1) % 25 == 0:
             print(f"  [{name}] features {i + 1}/{len(items)} questions ({time.time() - t0:.0f}s)", flush=True)
     X = np.array(X)
     assert X.shape[1] == FEATURE_DIM and np.isfinite(X).all(), f"{name}: bad feature matrix {X.shape}"
-    (out / "features").mkdir(exist_ok=True)
+    (out / features_dir).mkdir(exist_ok=True)
     np.savez(
-        out / "features" / f"{name}.npz",
+        out / features_dir / f"{name}.npz",
         X=X, y=np.array(y, float), query_ids=np.array(qids), passage_ids=np.array(pids),
         dataset=np.array([name] * len(y)),
-        label_source=np.array(LABEL_UTILITY if has_gold else LABEL_RAGBENCH_PROXY),
+        label_source=np.array("none" if not label else LABEL_UTILITY if has_gold else LABEL_RAGBENCH_PROXY),
     )
     print(f"{name}: {len(y)} pairs, {len(set(qids))} questions, label mean {np.mean(y):.3f}, "
           f"nonzero {100 * np.mean(np.array(y) != 0):.0f}% ({time.time() - t0:.0f}s)", flush=True)
@@ -118,6 +119,9 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=None, help="only the first N questions of each dataset (smoke test)")
     ap.add_argument("--batch-size", type=int, default=None, help="default 8 (mlx) or 32 (cuda)")
     ap.add_argument("--force", action="store_true", help="recompute datasets that already have features")
+    ap.add_argument("--features-only", metavar="SUBDIR", default=None,
+                    help="no Eq. (1) labelling: only the 14 features with --model as M (a small reader), written to "
+                         "<data>/SUBDIR with y = 0")
     args = ap.parse_args()
 
     data = Path(args.data)
@@ -147,18 +151,20 @@ def main() -> None:
     hyde = CUDAHyDEGenerator(llm=llm)
     dense = DenseRetriever(args.dense_model)
     for name in names:
-        if (out / "features" / f"{name}.npz").exists() and not args.force:
+        fdir = args.features_only or "features"
+        if (out / fdir / f"{name}.npz").exists() and not args.force:
             print(f"{name}: features exist, skipping", flush=True)
             continue
         subset = by_name[name][: args.limit] if args.limit else by_name[name]
-        process_dataset(name, subset, out, llm, hyde, prober, dense, stats)
+        process_dataset(name, subset, out, llm, hyde, prober, dense, stats, fdir, label=args.features_only is None)
     if args.backend == "cuda":  # the numbers the paper reports about hardware, written next to the features
         import torch
 
         info = {"gpu": torch.cuda.get_device_name(0), "model": model, "quantization": args.quantization,
                 "peak_gpu_gib": round(torch.cuda.max_memory_allocated() / 2**30, 2),
                 "batch_size": args.batch_size or 32, "datasets": names, "limit": args.limit}
-        (out / f"run_info_{args.quantization}.json").write_text(json.dumps(info, indent=1))
+        tag = f"_{args.features_only}" if args.features_only else ""
+        (out / f"run_info_{args.quantization}{tag}.json").write_text(json.dumps(info, indent=1))
         print(f"peak GPU memory {info['peak_gpu_gib']} GiB ({args.quantization})", flush=True)
 
 

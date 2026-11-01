@@ -59,3 +59,22 @@ def test_item_features_have_the_trained_scale_and_the_right_shape():
     assert X[0, 1] == pytest.approx(0.9) and X[1, 1] == pytest.approx(0.8)  # dense cosine, passage order
     # D5 comes from the probe: delta_h = h_base - h_ctx
     assert X[0, 13] == pytest.approx(1.0) and X[1, 13] == pytest.approx(0.9)
+
+
+def test_features_only_writes_a_separate_directory_without_labelling(tmp_path):
+    from experiments.extract_multidataset import process_dataset
+
+    items = [{"query_id": "q1", "query": "capital of France", "gold_answers": "['Paris']", "passages": [
+        {"id": "a", "text": '"Paris"\nParis is the capital of France.', "bm25": 8.0},
+        {"id": "b", "text": '"Cats"\nCats are small mammals.', "bm25": 2.0}]}]
+    hyde = MagicMock()
+    hyde.generate_batch.return_value = ["The capital of France is Paris."]
+    llm = MagicMock()
+    with patch("src.features.d4_faithfulness._get_nli", return_value=_nli()), \
+            patch("experiments.extract_multidataset.BatchedUtilityLabeler") as labeler:
+        process_dataset("nq", items, tmp_path, llm, hyde, FakeProber(), FakeDense(), STATS, "features_r", label=False)
+    labeler.assert_not_called()
+    z = np.load(tmp_path / "features_r" / "nq.npz")
+    assert z["X"].shape == (2, FEATURE_DIM) and z["y"].tolist() == [0.0, 0.0]
+    assert str(z["label_source"]) == "none" and z["passage_ids"].tolist() == ["a", "b"]
+    assert not (tmp_path / "features").exists() and not (tmp_path / "labels").exists()

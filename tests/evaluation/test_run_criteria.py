@@ -45,3 +45,16 @@ def test_parse_ranking_scores_by_position_and_puts_missing_last():
     s = parse_ranking("[3] > [1] > [3] > [9]", 4)
     assert s.tolist() == [-1.0, -4.0, 0.0, -4.0]
     assert parse_ranking("no ranking", 2).tolist() == [-2.0, -2.0]
+
+
+def test_reader_features_are_aligned_and_missing_datasets_give_none(tmp_path):
+    for sub in ("features", "extra", "features_r"):
+        (tmp_path / sub).mkdir()
+    for name, pids in (("a", ["p0", "p1"]), ("b", ["p2"])):
+        np.savez(tmp_path / "features" / f"{name}.npz", label_source="utility_eq1", passage_ids=np.array(pids))
+        np.savez(tmp_path / "extra" / f"{name}.npz", passage_ids=np.array(pids))
+    np.savez(tmp_path / "features_r" / "a.npz", passage_ids=np.array(["p0", "p1"]), X=np.ones((2, 14)))
+    assert run_criteria.load_reader_X(tmp_path, "features_r") is None
+    np.savez(tmp_path / "features_r" / "b.npz", passage_ids=np.array(["p2"]), X=np.full((1, 14), 2.0))
+    X = run_criteria.load_reader_X(tmp_path, "features_r")
+    assert X.shape == (3, 14) and X[2, 0] == 2.0

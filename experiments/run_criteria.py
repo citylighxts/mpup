@@ -5,6 +5,8 @@
   python -m experiments.run_criteria transfer --out results/transfer       # C5: one predictor, several LLMs
   python -m experiments.run_criteria matrix --out results/transfer_matrix  # C5: every source LLM x every target LLM
   python -m experiments.run_criteria probing --out results/probing          # C4: tiers vs target-LLM judgments
+  python -m experiments.run_criteria reader --out results/reader_select     # one config for C1-C6: choice on dev
+  python -m experiments.run_criteria reader-test --out results/reader_test  # ... and its one look at the test part
 
 Every predictor is the variant chosen in the larger study (`gbr(500,d4)`, query-centred, the same probe), fitted on
 the development questions only; no setting is chosen on the test questions. Feature columns follow
@@ -44,7 +46,7 @@ import numpy as np
 from experiments import run_big
 from experiments.significance_tests import describe, holm
 from src.evaluation.metrics import _is_subsequence, _normalize
-from src.evaluation.protocol import LABEL_UTILITY, per_query_scores
+from src.evaluation.protocol import LABEL_UTILITY, leave_one_dataset_out, per_query_scores
 from src.predictor.mpup_predictor import center_by_group
 
 LLM_FREE = list(range(8))
@@ -325,7 +327,8 @@ def run_matrix(args) -> None:
 
 # ------------------------------------------------------------------ C4
 
-PROBES = {"Qwen2.5-7B": "results/probe_baselines", "Mistral-7B": "results/probe_baselines_mistral"}
+PROBES = {"Qwen2.5-7B": "results/probe_baselines", "Mistral-7B": "results/probe_baselines_mistral",
+          "OLMo-2-7B": "results/probe_baselines_olmo"}
 PROBE_METHODS = ["PVS w/o A", "PVS w/ A", "likelihood", "LVR w/ A", "answer confidence"]
 
 
@@ -351,56 +354,160 @@ def run_probing(args) -> None:
     fitted = {"MPUP (Qwen labels)": run_big.fit_predict(d, dev, allr, V_PROBE),
               "reader-1.5B (answer labels)": run_big.fit_predict(view(d, LLM_FREE, H15, lab), dev_a, allr, V_PROBE),
               "no-LM (answer labels)": run_big.fit_predict(view(d, LLM_FREE, y=lab), dev_a, allr, V_CE)}
+    title = ["# C4: MPUP tiers against utility estimates that query the target LLM", "",
+             "Probing methods: SpecUBench-style judgments of the target LLM (Zhang et al. 2025c), scores cached by "
+             "`run_probe_baselines`. MPUP tiers fitted on Qwen2.5-7B development questions (Qwen labels or answer "
+             "labels); 'native MPUP' is fitted on the target LLM itself.", ""]
+    compare_on_targets(d, fitted, title, args.out)
+
+
+def compare_on_targets(d: dict, fitted: dict[str, np.ndarray], title: list[str], out: str,
+                       only_with_probes: bool = True) -> None:
+    """Predictions for every row of the Qwen data (`fitted`), scored against each target LLM's utility on its test
+    pairs, next to the cached judgments of that LLM, the native MPUP and the relevance baselines."""
+    big = Path("data/processed/big")
     row = {k: i for i, k in enumerate(zip(d["q"], passage_ids(big)))}
     res = {"targets": {}}
-    L = ["# C4: MPUP tiers against utility estimates that query the target LLM", "",
-         "Probing methods: SpecUBench-style judgments of the target LLM (Zhang et al. 2025c), scores cached by "
-         "`run_probe_baselines`. MPUP tiers fitted on Qwen2.5-7B development questions (Qwen labels or answer labels); "
-         "'native MPUP' is fitted on the target LLM itself.", ""]
+    L = list(title)
     for tname, stem in PROBES.items():
         cache = Path(stem + "_scores.npz")
-        if not cache.exists():
-            continue
         path, layer = TARGETS[tname]
         p = Path(path)
+        if (only_with_probes and not cache.exists()) or not any((p / "extra").glob("*.npz")):
+            continue
         dm = run_big.load(p, layer)
         test = run_big.split(dm["q"], run_big.seen_ids([Path(s) for s in SEEN]))
         dv, tt = np.flatnonzero(~test), np.flatnonzero(test)
-        sc = np.load(cache, allow_pickle=True)
+        sc = np.load(cache, allow_pickle=True) if cache.exists() else None
         iq = np.array([row[k] for k in zip(dm["q"], passage_ids(p))])
         preds = {}
         if tname != "Qwen2.5-7B":
             preds["native MPUP"] = run_big.fit_predict(dm, dv, tt, V_PROBE)
         preds.update({n: v[iq[tt]] for n, v in fitted.items()})
-        preds.update({m: np.asarray(sc[m], dtype=float) for m in PROBE_METHODS if m in sc.files})
+        if sc is not None:
+            preds.update({m: np.asarray(sc[m], dtype=float) for m in PROBE_METHODS if m in sc.files})
         preds.update({b: f(dm, tt) for b, f in run_big.BASELINES.items()})
         tiers = [n for n in preds if "MPUP" in n or "answer labels" in n]
         cmp_ = {r: run_big._compare(dm, tt, preds, r) for r in tiers}
-        timing = json.loads(Path(stem + "_timing.json").read_text())
+        timing = json.loads(Path(stem + "_timing.json").read_text()) if sc is not None else None
         res["targets"][tname] = {"n_test_queries": cmp_[tiers[0]]["n_queries"], "timing_s": timing,
                                  "comparisons": {r: summary(c, r, list(preds)) for r, c in cmp_.items()},
-                                 "per_dataset_vs_probes": {}}
+                                 "per_dataset": {}}
         names = list(preds)
         L += [f"## {tname} ({cmp_[tiers[0]]['n_queries']} rankable test questions)", ""]
         L += md_table(cmp_[tiers[0]], names)
         for r in tiers:
-            L += md_vs(cmp_[r], r, [n for n in names if n in PROBE_METHODS or n == r])
+            others = [n for n in names if n in PROBE_METHODS or n in ("cross-encoder", "dense")]
+            L += md_vs(cmp_[r], r, others + [r])
             c = cmp_[r]
-            for m in PROBE_METHODS:
-                if m not in preds:
-                    continue
+            for m in others:
                 ph = per_dataset_holm(dm, tt, preds[r], preds[m], c["datasets"])
                 ahead = [c["per_dataset"][k]["spearman"][r] > c["per_dataset"][k]["spearman"][m] for k in c["datasets"]]
                 sig_up = sum(a and q < 0.05 for a, q in zip(ahead, ph))
                 sig_down = sum(not a and q < 0.05 for a, q in zip(ahead, ph))
-                res["targets"][tname]["per_dataset_vs_probes"][f"{r} vs {m}"] = {"ahead": int(sum(ahead)),
-                                                                                 "ahead_holm_below_005": int(sig_up),
-                                                                                 "behind_holm_below_005": int(sig_down),
-                                                                                 "n": len(ph)}
+                res["targets"][tname]["per_dataset"][f"{r} vs {m}"] = {"ahead": int(sum(ahead)),
+                                                                       "ahead_holm_below_005": int(sig_up),
+                                                                       "behind_holm_below_005": int(sig_down),
+                                                                       "n": len(ph)}
                 L.append(f"- per dataset vs {m}: ahead in {sum(ahead)}/{len(ph)}; Holm p < 0.05 ahead in {sig_up}, "
                          f"behind in {sig_down}")
         L += ["", f"Timing (s, all test pairs): {json.dumps(timing)}", ""]
+    write(out, res, L)
+
+
+# ------------------------------------------------------------------ one configuration for all six criteria
+
+READER_SETS = {"1.5B": ("features_q15", "extra_q15", 21), "3B": ("features_q3", "extra_q3", 27)}
+
+
+def load_reader_X(data_dir: Path, sub: str) -> np.ndarray | None:
+    """The 14 features recomputed with a small reader as M (`extract_multidataset --features-only sub`), aligned with
+    `run_big.load`; None while any dataset is missing."""
+    out = []
+    for p in _files(data_dir):
+        f = data_dir / sub / p.name
+        if not f.exists():
+            return None
+        z = np.load(f)
+        assert (z["passage_ids"] == np.load(p)["passage_ids"]).all(), p.name
+        out.append(z["X"])
+    return np.concatenate(out)
+
+
+def reader_candidates(d: dict, data_dir: Path, lab: np.ndarray) -> dict[str, dict]:
+    """Every reader configuration fitted to the answer labels: the LLM-free columns or all 14 features recomputed with
+    the reader, plus the ridge probe on the reader's hidden state, plus the cross-encoder. No column comes from M."""
+    out = {}
+    for size, (fsub, hsub, layer) in READER_SETS.items():
+        if not (data_dir / hsub).exists() or not all((data_dir / hsub / p.name).exists() for p in _files(data_dir)):
+            continue
+        H = load_hidden(data_dir, hsub, layer)
+        out[f"reader {size}, hidden"] = view(d, LLM_FREE, H, lab)
+        X = load_reader_X(data_dir, fsub)
+        if X is not None:
+            assert np.allclose(X[:, LLM_FREE], d["X"][:, LLM_FREE]), "LLM-free columns must not depend on the reader"
+            out[f"reader {size}, all features"] = {**view(d, LLM_FREE, H, lab), "X": X}
+    return {k: {kk: v[kk] for kk in ("X", "y", "q", "ds", "ce", "H", "soft")} for k, v in out.items()}
+
+
+def _dev_fold(v: dict, u: np.ndarray, tr: np.ndarray, te: np.ndarray) -> tuple[float, float]:
+    pred = run_big.fit_predict(v, tr, te, V_PROBE)
+    return (float(per_query_scores(v["y"][te], pred, v["q"][te])["spearman"].mean()),
+            float(per_query_scores(u[te], pred, v["q"][te])["spearman"].mean()))
+
+
+def run_reader(args) -> None:
+    """Choose the reader configuration on the development questions only.
+
+    Rule, fixed before the test questions are scored: leave-one-dataset-out over the development datasets, every
+    candidate fitted to answer containment, and the candidate with the highest macro r_s against answer containment
+    on the held-out dataset is selected (no LLM label enters the choice). The r_s against the Qwen2.5-7B utility of
+    the same folds is reported for information only."""
+    from joblib import Parallel, delayed
+
+    big = Path("data/processed/big")
+    d, dev, _ = setup()
+    lab, yesno = answer_labels(big)
+    dev_a = dev[~yesno[dev]]
+    cands = reader_candidates(d, big, lab)
+    folds = leave_one_dataset_out(d["ds"][dev_a])
+    jobs = [(c, name, dev_a[tr], dev_a[te]) for c in cands for name, tr, te in folds]
+    scores = Parallel(n_jobs=min(len(jobs), 44))(delayed(_dev_fold)(cands[c], d["y"], tr, te) for c, _, tr, te in jobs)
+    res = {"rule": "max macro dev LODO r_s against answer containment", "n_dev_queries": int(len(np.unique(d["q"][dev_a]))),
+           "candidates": {c: {"per_dataset": {}} for c in cands}}
+    for (c, name, _, _), (s_lab, s_u) in zip(jobs, scores):
+        res["candidates"][c]["per_dataset"][name] = {"answer": s_lab, "utility_qwen": s_u}
+    for c, v in res["candidates"].items():
+        v["macro_answer"] = float(np.mean([x["answer"] for x in v["per_dataset"].values()]))
+        v["macro_utility_qwen"] = float(np.mean([x["utility_qwen"] for x in v["per_dataset"].values()]))
+    res["selected"] = max(res["candidates"], key=lambda c: res["candidates"][c]["macro_answer"])
+    L = ["# Reader configuration chosen on the development questions", "", res["rule"] + f"; {res['n_dev_queries']} "
+         "development questions (yes/no left out). Utility r_s for information only.", "",
+         "| candidate | dev r_s vs answer containment | dev r_s vs Qwen utility |", "|---|---|---|"]
+    L += [f"| {c}{' **(selected)**' if c == res['selected'] else ''} | {v['macro_answer']:.3f} | {v['macro_utility_qwen']:.3f} |"
+          for c, v in res["candidates"].items()]
     write(args.out, res, L)
+
+
+def run_reader_test(args) -> None:
+    """One look at the test questions for the selected reader configuration, against every target LLM."""
+    big = Path("data/processed/big")
+    sel = json.loads(Path("results/reader_select.json").read_text())["selected"]
+    d, dev, _ = setup()
+    lab, yesno = answer_labels(big)
+    dev_a = dev[~yesno[dev]]
+    cands = reader_candidates(d, big, lab)
+    allr = np.arange(len(d["y"]))
+    fitted = {"MPUP (Qwen labels)": run_big.fit_predict(d, dev, allr, V_PROBE),
+              f"MPUP-R ({sel}, answer labels)": run_big.fit_predict(cands[sel], dev_a, allr, V_PROBE),
+              # for the cost-tier table only, which is fitted to the Qwen utility like the other tiers
+              f"{sel} (Qwen labels)": run_big.fit_predict({**cands[sel], "y": d["y"]}, dev, allr, V_PROBE)}
+    if sel != "reader 1.5B, hidden":
+        fitted["reader 1.5B, hidden (answer labels)"] = run_big.fit_predict(cands["reader 1.5B, hidden"], dev_a, allr, V_PROBE)
+    title = ["# The selected reader configuration on the test questions of every target LLM", "",
+             f"Selected on the development questions (`results/reader_select.md`): {sel}. Fitted once on the Qwen "
+             "development questions with answer-containment labels; applied unchanged to every target LLM.", ""]
+    compare_on_targets(d, fitted, title, args.out, only_with_probes=False)
 
 
 def write(out: str, res: dict, lines: list[str]) -> None:
@@ -412,10 +519,11 @@ def write(out: str, res: dict, lines: list[str]) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["light", "labels", "transfer", "matrix", "probing"])
+    ap.add_argument("what", choices=["light", "labels", "transfer", "matrix", "probing", "reader", "reader-test"])
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    {"light": run_light, "labels": run_labels, "transfer": run_transfer, "matrix": run_matrix, "probing": run_probing}[args.what](args)
+    {"light": run_light, "labels": run_labels, "transfer": run_transfer, "matrix": run_matrix, "probing": run_probing,
+     "reader": run_reader, "reader-test": run_reader_test}[args.what](args)
 
 
 if __name__ == "__main__":

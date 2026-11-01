@@ -1,0 +1,207 @@
+{
+ "rule": "max macro dev LODO r_s against answer containment",
+ "n_dev_queries": 5030,
+ "candidates": {
+  "reader 1.5B, hidden": {
+   "per_dataset": {
+    "2wikimultihopqa": {
+     "answer": 0.35612043315299985,
+     "utility_qwen": 0.19126987927236863
+    },
+    "ambigqa": {
+     "answer": 0.4456341805688668,
+     "utility_qwen": 0.30528210739250927
+    },
+    "bamboogle": {
+     "answer": 0.29902726528871637,
+     "utility_qwen": 0.1832710037171057
+    },
+    "entityquestions": {
+     "answer": 0.45185069139318906,
+     "utility_qwen": 0.3557839543144391
+    },
+    "hotpotqa": {
+     "answer": 0.4606510187802901,
+     "utility_qwen": 0.4030310350960867
+    },
+    "musique": {
+     "answer": 0.3270181879908983,
+     "utility_qwen": 0.2918569313839712
+    },
+    "nq": {
+     "answer": 0.3763917710387355,
+     "utility_qwen": 0.23901211616802506
+    },
+    "popqa": {
+     "answer": 0.4795257486199892,
+     "utility_qwen": 0.3230359838261879
+    },
+    "squad": {
+     "answer": 0.4218990001983126,
+     "utility_qwen": 0.28205436610057966
+    },
+    "triviaqa": {
+     "answer": 0.5569639489306001,
+     "utility_qwen": 0.26864623025416445
+    },
+    "webquestions": {
+     "answer": 0.38331044898579225,
+     "utility_qwen": 0.17331913381711167
+    }
+   },
+   "macro_answer": 0.41439933590439915,
+   "macro_utility_qwen": 0.27423297648568634
+  },
+  "reader 1.5B, all features": {
+   "per_dataset": {
+    "2wikimultihopqa": {
+     "answer": 0.35776511843785314,
+     "utility_qwen": 0.20030651963977736
+    },
+    "ambigqa": {
+     "answer": 0.4484555254333331,
+     "utility_qwen": 0.30632766374076237
+    },
+    "bamboogle": {
+     "answer": 0.2919797471566747,
+     "utility_qwen": 0.19185267729299868
+    },
+    "entityquestions": {
+     "answer": 0.466070111075614,
+     "utility_qwen": 0.36225417605592214
+    },
+    "hotpotqa": {
+     "answer": 0.4634267795009094,
+     "utility_qwen": 0.400974725772727
+    },
+    "musique": {
+     "answer": 0.32535530556635434,
+     "utility_qwen": 0.2937885994431337
+    },
+    "nq": {
+     "answer": 0.39702252458489573,
+     "utility_qwen": 0.24590643080816477
+    },
+    "popqa": {
+     "answer": 0.48206579180194614,
+     "utility_qwen": 0.3204719310827697
+    },
+    "squad": {
+     "answer": 0.4172077403015,
+     "utility_qwen": 0.2841716760738779
+    },
+    "triviaqa": {
+     "answer": 0.5725755876390947,
+     "utility_qwen": 0.2759894277658839
+    },
+    "webquestions": {
+     "answer": 0.4176969522739776,
+     "utility_qwen": 0.19472830634331614
+    }
+   },
+   "macro_answer": 0.42178374397928664,
+   "macro_utility_qwen": 0.27970655763812124
+  },
+  "reader 3B, hidden": {
+   "per_dataset": {
+    "2wikimultihopqa": {
+     "answer": 0.3413600135052591,
+     "utility_qwen": 0.19062639614300617
+    },
+    "ambigqa": {
+     "answer": 0.4505744629108135,
+     "utility_qwen": 0.31355591999828686
+    },
+    "bamboogle": {
+     "answer": 0.269227968788044,
+     "utility_qwen": 0.17793573128975973
+    },
+    "entityquestions": {
+     "answer": 0.45117110320747594,
+     "utility_qwen": 0.35998017279276046
+    },
+    "hotpotqa": {
+     "answer": 0.45620266935127674,
+     "utility_qwen": 0.4033060768601203
+    },
+    "musique": {
+     "answer": 0.3251599895727728,
+     "utility_qwen": 0.2975957168838423
+    },
+    "nq": {
+     "answer": 0.3890920516411988,
+     "utility_qwen": 0.2441842376507973
+    },
+    "popqa": {
+     "answer": 0.4826979981617694,
+     "utility_qwen": 0.3213045236170094
+    },
+    "squad": {
+     "answer": 0.4239941637829052,
+     "utility_qwen": 0.2878682227566795
+    },
+    "triviaqa": {
+     "answer": 0.5626215825884817,
+     "utility_qwen": 0.27326892626601107
+    },
+    "webquestions": {
+     "answer": 0.3802636025225573,
+     "utility_qwen": 0.18426963086962017
+    }
+   },
+   "macro_answer": 0.4120332369120504,
+   "macro_utility_qwen": 0.27762686864799024
+  },
+  "reader 3B, all features": {
+   "per_dataset": {
+    "2wikimultihopqa": {
+     "answer": 0.3371081003175275,
+     "utility_qwen": 0.19357173961674715
+    },
+    "ambigqa": {
+     "answer": 0.4598233383681402,
+     "utility_qwen": 0.31558181207477304
+    },
+    "bamboogle": {
+     "answer": 0.2971128853604617,
+     "utility_qwen": 0.1798079310796847
+    },
+    "entityquestions": {
+     "answer": 0.4693416395825393,
+     "utility_qwen": 0.36894307396169634
+    },
+    "hotpotqa": {
+     "answer": 0.470816184942532,
+     "utility_qwen": 0.4090745623313869
+    },
+    "musique": {
+     "answer": 0.33208094874236754,
+     "utility_qwen": 0.30212622489824886
+    },
+    "nq": {
+     "answer": 0.4167730535260891,
+     "utility_qwen": 0.25582434371338925
+    },
+    "popqa": {
+     "answer": 0.49485688392761923,
+     "utility_qwen": 0.3267262617685538
+    },
+    "squad": {
+     "answer": 0.4286410209284556,
+     "utility_qwen": 0.2910386170877415
+    },
+    "triviaqa": {
+     "answer": 0.5739234767405333,
+     "utility_qwen": 0.2780165074922084
+    },
+    "webquestions": {
+     "answer": 0.40689744038189857,
+     "utility_qwen": 0.2033792445608907
+    }
+   },
+   "macro_answer": 0.426124997528924,
+   "macro_utility_qwen": 0.2840082107804837
+  }
+ },
+ "selected": "reader 3B, all features"
+}

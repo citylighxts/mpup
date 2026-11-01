@@ -264,6 +264,34 @@ python -m experiments.run_probe_baselines --data data/processed/big --model Qwen
 python -m experiments.selection_latency --n 100 --out results/selection_latency
 ```
 
+### Reader tier: all six criteria? (2026-10-30 / 11-01)
+
+Goal: one configuration without the target LLM (reader ≤ 3B) and with gold-answer labels only that is also
+competitive with the target LLM's own judgments (C4). Four reader candidates (Qwen2.5-1.5B / 3B × hidden state only /
+all 14 features recomputed with the reader) were scored on the development questions only (LODO, r_s vs answer
+containment): 0.414 / 0.422 / 0.412 / **0.426 (3B, all features, selected)** ([`results/reader_select.md`](results/reader_select.md)).
+One look at test ([`results/reader_test.md`](results/reader_test.md)), r_s vs each LLM's utility:
+
+| target | reader tier (3B) | best judgment of the target LLM | difference | cross-encoder |
+|---|---|---|---|---|
+| Qwen2.5-7B | 0.298 | PVS w/ A 0.287 | +0.011 (p = 0.13, level) | 0.260 |
+| Mistral-7B | 0.273 | likelihood 0.308 | −0.035 (p = 0.0004) | 0.243 |
+| OLMo-2-7B | 0.285 | PVS w/ A 0.267 | +0.019 (p = 0.013) | 0.247 |
+
+So C4 is still only partly met (Mistral); Table I keeps two MPUP rows. OLMo judgments:
+[`results/probe_baselines_olmo.md`](results/probe_baselines_olmo.md). Selection time 2.1 s/query, 12.4 GiB
+([`results/selection_latency_readers.md`](results/selection_latency_readers.md)); fitted to the Qwen utility instead,
+the tier reaches 0.313 ([`results/reader_tier_qwen.json`](results/reader_tier_qwen.json)).
+
+```bash
+python -m experiments.extract_multidataset --data data/processed/big --backend cuda --model Qwen/Qwen2.5-3B-Instruct --features-only features_q3
+python -m experiments.extract_extra --data data/processed/big --model Qwen/Qwen2.5-3B-Instruct --layers 18 27 --out-dir extra_q3 --batch-size 8
+python -m experiments.run_criteria reader --out results/reader_select     # development questions only
+python -m experiments.run_criteria reader-test --out results/reader_test  # one look at test
+python -m experiments.selection_latency --no-m --out results/selection_latency_readers
+python -m experiments.reader_tier_qwen
+```
+
 ### Earlier run — Apple Silicon, MLX Llama-3.2-3B-Instruct 4-bit
 
 Same questions and candidates, 719 rankable queries ([`results/multidataset.md`](results/multidataset.md)).

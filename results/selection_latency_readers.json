@@ -1,0 +1,131 @@
+{
+ "gpu": "NVIDIA RTX 6000 Ada Generation",
+ "n_queries": 100,
+ "mean_candidates": 17.2,
+ "components": {
+  "dense": {
+   "mean_ms": 130.0470807775855,
+   "median_ms": 127.99192313104868
+  },
+  "d2_d3": {
+   "mean_ms": 519.7268108651042,
+   "median_ms": 613.4900776669383
+  },
+  "ce": {
+   "mean_ms": 38.80398141220212,
+   "median_ms": 35.48441082239151
+  },
+  "hidden_R1.5B": {
+   "mean_ms": 137.53521027043462,
+   "median_ms": 138.45926895737648
+  },
+  "hidden_R0.5B": {
+   "mean_ms": 63.6982991360128,
+   "median_ms": 57.14154522866011
+  },
+  "regressor": {
+   "mean_ms": 1.3254883140325546,
+   "median_ms": 1.3161804527044296
+  },
+  "hyde_R1.5B": {
+   "mean_ms": 512.5338372029364,
+   "median_ms": 486.0577518120408
+  },
+  "d4_R1.5B": {
+   "mean_ms": 293.9787685871124,
+   "median_ms": 254.10170387476683
+  },
+  "d5_R1.5B": {
+   "mean_ms": 151.55687749385834,
+   "median_ms": 153.30875106155872
+  },
+  "hidden_R1.5Bf": {
+   "mean_ms": 137.30606108903885,
+   "median_ms": 137.79875729233027
+  },
+  "hyde_R3B": {
+   "mean_ms": 672.6740193925798,
+   "median_ms": 580.9627585113049
+  },
+  "d4_R3B": {
+   "mean_ms": 228.01151756197214,
+   "median_ms": 225.97290202975273
+  },
+  "d5_R3B": {
+   "mean_ms": 267.76892660185695,
+   "median_ms": 264.16537817567587
+  },
+  "hidden_R3Bf": {
+   "mean_ms": 274.91080516949296,
+   "median_ms": 280.03335278481245
+  }
+ },
+ "tiers": {
+  "reader-1.5B": {
+   "mean_ms": 827.438571639359,
+   "median_ms": 925.4539851099253,
+   "peak_gpu_gib": 7.69,
+   "llm_calls": [
+    "dense",
+    "d2_d3",
+    "hidden_R1.5B",
+    "ce",
+    "regressor"
+   ]
+  },
+  "reader-0.5B": {
+   "mean_ms": 753.6016605049372,
+   "median_ms": 836.6036135703325,
+   "peak_gpu_gib": 4.92,
+   "llm_calls": [
+    "dense",
+    "d2_d3",
+    "hidden_R0.5B",
+    "ce",
+    "regressor"
+   ]
+  },
+  "no-LM": {
+   "mean_ms": 689.9033613689244,
+   "median_ms": 780.6768426671624,
+   "peak_gpu_gib": 3.47,
+   "llm_calls": [
+    "dense",
+    "d2_d3",
+    "ce",
+    "regressor"
+   ]
+  },
+  "reader-1.5B, all features": {
+   "mean_ms": 1785.2789057418704,
+   "median_ms": 1799.362930469215,
+   "peak_gpu_gib": 9.44,
+   "llm_calls": [
+    "dense",
+    "d2_d3",
+    "hyde_R1.5B",
+    "d4_R1.5B",
+    "d5_R1.5B",
+    "hidden_R1.5Bf",
+    "ce",
+    "regressor"
+   ]
+  },
+  "reader-3B, all features": {
+   "mean_ms": 2133.268630094826,
+   "median_ms": 2095.603379420936,
+   "peak_gpu_gib": 12.4,
+   "llm_calls": [
+    "dense",
+    "d2_d3",
+    "hyde_R3B",
+    "d4_R3B",
+    "d5_R3B",
+    "hidden_R3Bf",
+    "ce",
+    "regressor"
+   ]
+  }
+ },
+ "note": "bf16, batch = candidates of one query; peak memory is torch.cuda.max_memory_allocated of the phase (models of the tier loaded, plus E5 and the cross-encoder)"
+}

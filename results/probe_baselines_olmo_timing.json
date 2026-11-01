@@ -1,0 +1,10 @@
+{
+ "pseudo": 2589.3,
+ "PVS w/o A": 1774.2,
+ "PVS w/ A": 1599.6,
+ "likelihood": 1385.1,
+ "answer confidence": 1350.4,
+ "LVR ranked share": 0.532140015910899,
+ "LVR w/ A": 5079.2,
+ "peak_gpu_gib": 27.56
+}
