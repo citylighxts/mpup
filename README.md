@@ -278,7 +278,10 @@ One look at test ([`results/reader_test.md`](results/reader_test.md)), r_s vs ea
 | Mistral-7B | 0.273 | likelihood 0.308 | −0.035 (p = 0.0004) | 0.243 |
 | OLMo-2-7B | 0.285 | PVS w/ A 0.267 | +0.019 (p = 0.013) | 0.247 |
 
-So C4 is still only partly met (Mistral); Table I keeps two MPUP rows. OLMo judgments:
+So C4 is still only partly met (Mistral); Table I keeps two MPUP rows. Pooled over the three LLMs ([`results/c4_pooled.md`](results/c4_pooled.md),
+`python -m experiments.pooled_c4`, question-clustered bootstrap and sign flip), the reader tier is level with PVS w/ A
+(+0.004, p = 0.45), ahead of the likelihood (+0.016, p = 0.03) and of the other three, and level with the best judgment
+of each LLM picked after the fact (−0.002, p = 0.77). Whether C4 is read this way is still open. OLMo judgments:
 [`results/probe_baselines_olmo.md`](results/probe_baselines_olmo.md). Selection time 2.1 s/query, 12.4 GiB
 ([`results/selection_latency_readers.md`](results/selection_latency_readers.md)); fitted to the Qwen utility instead,
 the tier reaches 0.313 ([`results/reader_tier_qwen.json`](results/reader_tier_qwen.json)).
