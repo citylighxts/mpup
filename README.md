@@ -1,4 +1,4 @@
-# MPUP — Meta-Probing Utility Predictor
+# MPUP — Multi-Probing Utility Predictor
 
 Predict RAG document utility scores **without fine-tuning the target LLM**.
 

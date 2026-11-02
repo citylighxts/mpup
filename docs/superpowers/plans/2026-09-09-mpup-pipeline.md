@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement MPUP (Meta-Probing Utility Predictor) — sistem yang memprediksi utility score dokumen RAG terhadap target LLM tanpa fine-tuning, menggunakan 1-pass logit probing (D5) dikombinasikan dengan fitur NLP eksternal (D1–D4).
+**Goal:** Implement MPUP (Multi-Probing Utility Predictor) — sistem yang memprediksi utility score dokumen RAG terhadap target LLM tanpa fine-tuning, menggunakan 1-pass logit probing (D5) dikombinasikan dengan fitur NLP eksternal (D1–D4).
 
 **Architecture:** Feature extraction 5-dimensi (D1–D4 dari NLP libraries + D5 dari logit probing M_target) → concatenate ke vektor tunggal x_i → XGBoost/MLP predictor f_source → zero-shot atau few-shot linear calibration (α·f_source + β) → ranking passages → RAG prompt.
 

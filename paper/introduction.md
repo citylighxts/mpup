@@ -88,7 +88,7 @@ the same D5-only quantity reads 0.452 under masking and 0.038 under honest retra
 We ask: **can retrieval utility be predicted accurately enough to rank passages using only
 commodity hardware, freely available labels, and a single predictor shared across target LLMs?**
 
-We answer with MPUP (Meta-Probing Utility Predictor), a utility-aware passage selector that
+We answer with MPUP (Multi-Probing Utility Predictor), a utility-aware passage selector that
 never fine-tunes the target LLM. MPUP scores each candidate with fourteen features across five
 families — retriever-centric signals, document-quality statistics, semantic overlap against a
 generated hypothetical answer, NLI-based faithfulness, and LLM-aware logit probing — then ranks
